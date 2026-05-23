@@ -18,7 +18,7 @@ const SHEETS = {
 };
 
 const HEADERS = {
-  [SHEETS.PENGAJUAN]: ['ID Pengajuan', 'Timestamp Submit', 'Nama', 'Bagian/Cabang', 'Pemilik', 'Alasan Pengajuan', 'Tanggal Form', 'File Hard Copy URL', 'File Hard Copy ID', 'Catatan Tambahan', 'Jumlah Item', 'Status', 'Catatan Admin', 'Tanggal Update Status Terakhir', 'User Update Status', 'Riwayat Singkat'],
+  [SHEETS.PENGAJUAN]: ['ID Pengajuan', 'Timestamp Submit', 'Nama', 'Bagian/Cabang', 'Pemilik', 'Alasan Pengajuan', 'Tanggal Form', 'File Hard Copy URL', 'File Hard Copy ID', 'Catatan Tambahan', 'Jumlah Item', 'Status', 'Catatan Admin', 'Tanggal Update Status Terakhir', 'User Update Status', 'Riwayat Singkat', 'Resume Token', 'Draft Created At', 'Draft Updated At', 'Submitted At'],
   [SHEETS.ITEMS]: ['ID Pengajuan', 'No Item', 'Produk', 'Model', 'Nomor Seri'],
   [SHEETS.USERS]: ['Username', 'Password/PIN', 'Nama', 'Role', 'Aktif', 'Last Login'],
   [SHEETS.RECIPIENTS]: ['Nama', 'Email', 'Aktif', 'Keterangan'],
@@ -27,6 +27,7 @@ const HEADERS = {
   [SHEETS.EMAIL_LOG]: ['Timestamp', 'Subject', 'Recipients', 'Jumlah Pengajuan', 'Status'],
 };
 
+const DRAFT_STATUS = 'Menunggu Upload';
 const VALID_STATUSES = ['Baru', 'Disetujui', 'Ditolak', 'Selesai'];
 const VALID_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
 const VALID_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
@@ -79,10 +80,17 @@ function doPost(e) {
     const data = parseRequest_(e);
     const action = data.action || (e && e.parameter && e.parameter.action);
     if (!action) throw new Error('Action wajib diisi');
+    ensureRuntimeHeaders_();
 
     switch (action) {
       case 'submitPengajuan':
         return jsonResponse_(handleSubmitPengajuan(data));
+      case 'saveDraftPengajuan':
+        return jsonResponse_(handleSaveDraftPengajuan(data));
+      case 'getDraftPengajuan':
+        return jsonResponse_(handleGetDraftPengajuan(data));
+      case 'submitDraftPengajuan':
+        return jsonResponse_(handleSubmitDraftPengajuan(data));
       case 'adminLogin':
         return jsonResponse_(handleAdminLogin(data));
       case 'getDashboard':
@@ -136,7 +144,7 @@ function validateSession(token) {
 
 function handleSubmitPengajuan(data) {
   const config = getConfig();
-  const cleaned = normalizeSubmission_(data, config);
+  const cleaned = normalizeSubmission_(data, config, true);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -150,29 +158,109 @@ function handleSubmitPengajuan(data) {
     file.setName(id + '_hardcopy.' + cleaned.fileExtension);
 
     const now = new Date();
-    getSheet_(SHEETS.PENGAJUAN).appendRow([
-      id,
-      now,
-      cleaned.nama,
-      cleaned.bagianCabang,
-      cleaned.pemilik,
-      cleaned.alasanPengajuan,
-      cleaned.tanggalForm,
-      file.getUrl(),
-      file.getId(),
-      cleaned.catatanTambahan,
-      cleaned.items.length,
-      'Baru',
-      '',
-      '',
-      '',
-      '[' + formatDateTime_(now) + '] Pengajuan dibuat',
-    ]);
+    appendPengajuanRow_(id, cleaned, 'Baru', '', now, file.getUrl(), file.getId(), '', '', '', now, '[' + formatDateTime_(now) + '] Pengajuan dibuat');
+    replaceItemRows_(id, cleaned.items);
+    return { success: true, data: { idPengajuan: id } };
+  } finally {
+    lock.releaseLock();
+  }
+}
 
-    const itemRows = cleaned.items.map(function (item, index) {
-      return [id, index + 1, item.produk, item.model, item.nomorSeri];
-    });
-    getSheet_(SHEETS.ITEMS).getRange(getSheet_(SHEETS.ITEMS).getLastRow() + 1, 1, itemRows.length, itemRows[0].length).setValues(itemRows);
+function handleSaveDraftPengajuan(data) {
+  const config = getConfig();
+  const cleaned = normalizeSubmission_(data, config, false);
+  const requestedId = clean_(data.idPengajuan);
+  const requestedToken = clean_(data.resumeToken);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const now = new Date();
+    const sheet = getSheet_(SHEETS.PENGAJUAN);
+    const record = requestedId ? findPengajuanRecord_(requestedId) : null;
+    let id = requestedId;
+    let token = requestedToken;
+    let history = '[' + formatDateTime_(now) + '] Draft dibuat';
+    let draftCreatedAt = now;
+
+    if (record) {
+      if (!requestedToken || clean_(record.row[record.col['Resume Token']]) !== requestedToken) throw new Error('Kode lanjutkan tidak valid');
+      if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat diubah');
+      const oldHistory = record.row[record.col['Riwayat Singkat']] || '';
+      history = oldHistory ? oldHistory + '\n[' + formatDateTime_(now) + '] Draft diperbarui' : '[' + formatDateTime_(now) + '] Draft diperbarui';
+      draftCreatedAt = record.row[record.col['Draft Created At']] || now;
+      updatePengajuanRow_(sheet, record.rowNumber, record.col, id, cleaned, DRAFT_STATUS, token, '', '', '', draftCreatedAt, now, '', history);
+    } else {
+      if (requestedId || requestedToken) throw new Error('Draft tidak ditemukan atau kode lanjutkan tidak valid');
+      id = generateIdUnlocked_();
+      token = generateResumeToken_();
+      appendPengajuanRow_(id, cleaned, DRAFT_STATUS, token, '', '', '', '', now, now, '', history);
+    }
+
+    replaceItemRows_(id, cleaned.items);
+    return { success: true, data: { idPengajuan: id, resumeToken: token, status: DRAFT_STATUS } };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleGetDraftPengajuan(data) {
+  const id = clean_(data.idPengajuan);
+  const token = clean_(data.resumeToken);
+  if (!id || !token) throw new Error('ID Pengajuan dan Kode Lanjutkan wajib diisi');
+
+  const record = findPengajuanRecord_(id);
+  if (!record) throw new Error('Draft tidak ditemukan');
+  if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Kode lanjutkan tidak valid');
+  if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat dilanjutkan');
+
+  const row = record.row;
+  const col = record.col;
+  return {
+    success: true,
+    data: {
+      idPengajuan: id,
+      status: row[col['Status']],
+      nama: row[col['Nama']],
+      bagianCabang: row[col['Bagian/Cabang']],
+      pemilik: row[col['Pemilik']],
+      alasanPengajuan: row[col['Alasan Pengajuan']],
+      tanggalForm: formatDateOnly_(row[col['Tanggal Form']]),
+      catatanTambahan: row[col['Catatan Tambahan']],
+      items: getItemsForPengajuan_(id),
+    },
+  };
+}
+
+function handleSubmitDraftPengajuan(data) {
+  const config = getConfig();
+  const cleaned = normalizeSubmission_(data, config, true);
+  const id = clean_(data.idPengajuan);
+  const token = clean_(data.resumeToken);
+  if (!id || !token) throw new Error('ID Pengajuan dan Kode Lanjutkan wajib diisi');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const record = findPengajuanRecord_(id);
+    if (!record) throw new Error('Draft tidak ditemukan');
+    if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Kode lanjutkan tidak valid');
+    if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat dilanjutkan');
+
+    const folderId = String(config.DRIVE_FOLDER_ID || APP.DRIVE_FOLDER_ID || '').trim();
+    if (!folderId) throw new Error('DRIVE_FOLDER_ID belum dikonfigurasi. Jalankan setupApp() terlebih dahulu.');
+
+    const bytes = Utilities.base64Decode(cleaned.fileBase64);
+    const blob = Utilities.newBlob(bytes, cleaned.fileMimeType, id + '_hardcopy.' + cleaned.fileExtension);
+    const file = DriveApp.getFolderById(folderId).createFile(blob);
+    file.setName(id + '_hardcopy.' + cleaned.fileExtension);
+
+    const now = new Date();
+    const oldHistory = record.row[record.col['Riwayat Singkat']] || '';
+    const history = oldHistory ? oldHistory + '\n[' + formatDateTime_(now) + '] Pengajuan final dikirim' : '[' + formatDateTime_(now) + '] Pengajuan final dikirim';
+    updatePengajuanRow_(record.sheet, record.rowNumber, record.col, id, cleaned, 'Baru', '', now, file.getUrl(), file.getId(), record.row[record.col['Draft Created At']] || '', record.row[record.col['Draft Updated At']] || '', now, history);
+    replaceItemRows_(id, cleaned.items);
+    getSheet_(SHEETS.STATUS_LOG).appendRow([now, id, DRAFT_STATUS, 'Baru', 'Final submit hard copy signed', 'system']);
+
     return { success: true, data: { idPengajuan: id } };
   } finally {
     lock.releaseLock();
@@ -221,6 +309,7 @@ function handleGetDashboard(data) {
   if (status && VALID_STATUSES.indexOf(status) === -1) throw new Error('Status filter tidak valid');
 
   let rows = readObjects_(SHEETS.PENGAJUAN).filter(function (row) {
+    if (VALID_STATUSES.indexOf(row['Status']) === -1) return false;
     const ts = row['Timestamp Submit'] instanceof Date ? row['Timestamp Submit'] : new Date(row['Timestamp Submit']);
     const haystack = [row['ID Pengajuan'], row['Nama'], row['Bagian/Cabang']].join(' ').toLowerCase();
     if (search && haystack.indexOf(search) === -1) return false;
@@ -261,14 +350,10 @@ function handleGetDetail(data) {
   const id = clean_(data.idPengajuan);
   if (!id) throw new Error('ID Pengajuan wajib diisi');
 
-  const pengajuan = readObjects_(SHEETS.PENGAJUAN).find(function (row) { return row['ID Pengajuan'] === id; });
+  const pengajuan = readObjects_(SHEETS.PENGAJUAN).find(function (row) { return row['ID Pengajuan'] === id && VALID_STATUSES.indexOf(row['Status']) !== -1; });
   if (!pengajuan) throw new Error('Pengajuan tidak ditemukan');
 
-  const items = readObjects_(SHEETS.ITEMS)
-    .filter(function (row) { return row['ID Pengajuan'] === id; })
-    .sort(function (a, b) { return Number(a['No Item']) - Number(b['No Item']); })
-    .map(function (row) { return { noItem: row['No Item'], produk: row['Produk'], model: row['Model'], nomorSeri: row['Nomor Seri'] }; });
-
+  const items = getItemsForPengajuan_(id);
   const riwayat = readObjects_(SHEETS.STATUS_LOG)
     .filter(function (row) { return row['ID Pengajuan'] === id; })
     .sort(function (a, b) { return new Date(b['Timestamp']).getTime() - new Date(a['Timestamp']).getTime(); })
@@ -325,7 +410,7 @@ function handleUpdateStatus(data) {
     const col = indexMap_(headers);
     let targetRow = -1;
     for (let i = 1; i < values.length; i++) {
-      if (values[i][col['ID Pengajuan']] === id) {
+      if (values[i][col['ID Pengajuan']] === id && VALID_STATUSES.indexOf(values[i][col['Status']]) !== -1) {
         targetRow = i + 1;
         break;
       }
@@ -378,6 +463,13 @@ function sendEmailDigest() {
   getSheet_(SHEETS.EMAIL_LOG).appendRow([new Date(), subject, recipients.join(', '), rows.length, 'Terkirim']);
 }
 
+function ensureRuntimeHeaders_() {
+  const ss = getSpreadsheet_();
+  Object.keys(HEADERS).forEach(function (name) {
+    ensureSheet_(ss, name, HEADERS[name]);
+  });
+}
+
 function getSpreadsheet_() {
   if (APP.SPREADSHEET_ID) return SpreadsheetApp.openById(APP.SPREADSHEET_ID);
   const props = PropertiesService.getScriptProperties();
@@ -401,13 +493,18 @@ function getSheet_(name) {
 
 function ensureSheet_(ss, name, headers) {
   const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
-  const existing = sheet.getLastRow() ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0] : [];
-  const needsHeader = headers.some(function (header, index) { return existing[index] !== header; });
-  if (needsHeader) {
-    sheet.clear();
+  if (!sheet.getLastRow()) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
+    return sheet;
   }
+
+  const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0];
+  const needsHeader = headers.some(function (header, index) { return existing[index] !== header; });
+  if (needsHeader) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  sheet.setFrozenRows(1);
   return sheet;
 }
 
@@ -442,7 +539,7 @@ function jsonResponse_(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function normalizeSubmission_(data, config) {
+function normalizeSubmission_(data, config, includeFile) {
   const cleaned = {
     nama: clean_(data.nama),
     bagianCabang: clean_(data.bagianCabang),
@@ -474,13 +571,102 @@ function normalizeSubmission_(data, config) {
     return normalized;
   });
 
-  if (!cleaned.fileBase64) throw new Error('File hard copy wajib dilampirkan');
-  if (VALID_EXTENSIONS.indexOf(cleaned.fileExtension) === -1) throw new Error('Format file tidak valid');
-  if (VALID_MIME_TYPES.indexOf(cleaned.fileMimeType) === -1) throw new Error('MIME type file tidak valid');
-  const approxBytes = Math.ceil((cleaned.fileBase64.length * 3) / 4);
-  const maxBytes = Number(config.MAX_UPLOAD_MB || APP.MAX_UPLOAD_MB) * 1024 * 1024;
-  if (approxBytes > maxBytes) throw new Error('Ukuran file melebihi ' + (config.MAX_UPLOAD_MB || APP.MAX_UPLOAD_MB) + 'MB');
+  if (includeFile) {
+    if (!cleaned.fileBase64) throw new Error('File hard copy wajib dilampirkan');
+    if (VALID_EXTENSIONS.indexOf(cleaned.fileExtension) === -1) throw new Error('Format file tidak valid');
+    if (VALID_MIME_TYPES.indexOf(cleaned.fileMimeType) === -1) throw new Error('MIME type file tidak valid');
+    const approxBytes = Math.ceil((cleaned.fileBase64.length * 3) / 4);
+    const maxBytes = Number(config.MAX_UPLOAD_MB || APP.MAX_UPLOAD_MB) * 1024 * 1024;
+    if (approxBytes > maxBytes) throw new Error('Ukuran file melebihi ' + (config.MAX_UPLOAD_MB || APP.MAX_UPLOAD_MB) + 'MB');
+  }
   return cleaned;
+}
+
+function appendPengajuanRow_(id, cleaned, status, resumeToken, timestampSubmit, fileUrl, fileId, catatanAdmin, draftCreatedAt, draftUpdatedAt, submittedAt, riwayatSingkat) {
+  getSheet_(SHEETS.PENGAJUAN).appendRow([
+    id,
+    timestampSubmit,
+    cleaned.nama,
+    cleaned.bagianCabang,
+    cleaned.pemilik,
+    cleaned.alasanPengajuan,
+    cleaned.tanggalForm,
+    fileUrl,
+    fileId,
+    cleaned.catatanTambahan,
+    cleaned.items.length,
+    status,
+    catatanAdmin,
+    '',
+    '',
+    riwayatSingkat,
+    resumeToken,
+    draftCreatedAt,
+    draftUpdatedAt,
+    submittedAt,
+  ]);
+}
+
+function updatePengajuanRow_(sheet, rowNumber, col, id, cleaned, status, resumeToken, timestampSubmit, fileUrl, fileId, draftCreatedAt, draftUpdatedAt, submittedAt, riwayatSingkat) {
+  const row = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  row[col['ID Pengajuan']] = id;
+  row[col['Timestamp Submit']] = timestampSubmit;
+  row[col['Nama']] = cleaned.nama;
+  row[col['Bagian/Cabang']] = cleaned.bagianCabang;
+  row[col['Pemilik']] = cleaned.pemilik;
+  row[col['Alasan Pengajuan']] = cleaned.alasanPengajuan;
+  row[col['Tanggal Form']] = cleaned.tanggalForm;
+  row[col['File Hard Copy URL']] = fileUrl;
+  row[col['File Hard Copy ID']] = fileId;
+  row[col['Catatan Tambahan']] = cleaned.catatanTambahan;
+  row[col['Jumlah Item']] = cleaned.items.length;
+  row[col['Status']] = status;
+  row[col['Catatan Admin']] = '';
+  row[col['Tanggal Update Status Terakhir']] = '';
+  row[col['User Update Status']] = '';
+  row[col['Riwayat Singkat']] = riwayatSingkat;
+  row[col['Resume Token']] = resumeToken;
+  row[col['Draft Created At']] = draftCreatedAt;
+  row[col['Draft Updated At']] = draftUpdatedAt;
+  row[col['Submitted At']] = submittedAt;
+  sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
+}
+
+function findPengajuanRecord_(id) {
+  const sheet = getSheet_(SHEETS.PENGAJUAN);
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return null;
+  const headers = values[0];
+  const col = indexMap_(headers);
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][col['ID Pengajuan']] === id) {
+      return { sheet: sheet, values: values, headers: headers, col: col, rowNumber: i + 1, row: values[i] };
+    }
+  }
+  return null;
+}
+
+function getItemsForPengajuan_(id) {
+  return readObjects_(SHEETS.ITEMS)
+    .filter(function (row) { return row['ID Pengajuan'] === id; })
+    .sort(function (a, b) { return Number(a['No Item']) - Number(b['No Item']); })
+    .map(function (row) { return { noItem: row['No Item'], produk: row['Produk'], model: row['Model'], nomorSeri: row['Nomor Seri'] }; });
+}
+
+function replaceItemRows_(id, items) {
+  const sheet = getSheet_(SHEETS.ITEMS);
+  const values = sheet.getDataRange().getValues();
+  if (values.length >= 2) {
+    const col = indexMap_(values[0]);
+    for (let i = values.length - 1; i >= 1; i--) {
+      if (values[i][col['ID Pengajuan']] === id) sheet.deleteRow(i + 1);
+    }
+  }
+
+  const itemRows = items.map(function (item, index) {
+    return [id, index + 1, item.produk, item.model, item.nomorSeri];
+  });
+  if (itemRows.length) sheet.getRange(sheet.getLastRow() + 1, 1, itemRows.length, itemRows[0].length).setValues(itemRows);
 }
 
 function generateIdUnlocked_() {
@@ -500,6 +686,10 @@ function generateIdUnlocked_() {
     });
   }
   return prefix + String(max + 1).padStart(4, '0');
+}
+
+function generateResumeToken_() {
+  return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
 }
 
 function readObjects_(sheetName) {

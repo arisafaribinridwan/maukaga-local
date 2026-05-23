@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Admin - Pengajuan Kartu Garansi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <style>.badge{display:inline-flex;align-items:center;border-radius:9999px;padding:.25rem .65rem;font-size:.75rem;font-weight:700}.field-error{border-color:#ef4444!important;background:#fef2f2}</style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <section id="section-login" class="flex min-h-screen items-center justify-center px-4 py-10">
+    <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+      <h1 class="text-2xl font-bold">Login Admin</h1>
+      <p class="mt-2 text-sm text-slate-600">Masuk untuk memantau dan memperbarui status pengajuan.</p>
+      <div id="login-alert" class="mt-4 hidden rounded-lg border px-4 py-3 text-sm"></div>
+      <div class="mt-5 space-y-4">
+        <label class="block text-sm font-medium">Username<input id="login-username" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" autocomplete="username"></label>
+        <label class="block text-sm font-medium">Password/PIN<input id="login-password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="password" autocomplete="current-password"></label>
+        <button id="btn-login" onclick="handleLogin()" class="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">Login</button>
+        <a href="index.html" class="block text-center text-sm font-semibold text-slate-600 hover:text-slate-900">← Kembali ke Form</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="section-dashboard" class="hidden px-4 py-6 sm:py-10">
+    <div class="mx-auto max-w-7xl">
+      <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div><p class="text-sm font-semibold uppercase tracking-wide text-blue-700">Dashboard Admin</p><h1 id="dashboard-title" class="text-2xl font-bold sm:text-3xl">Pengajuan Kartu Garansi</h1><p id="admin-name" class="mt-1 text-sm text-slate-600"></p></div>
+        <div class="flex flex-col gap-2 sm:flex-row"><a href="index.html" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold">← Kembali ke Form</a><button onclick="handleLogout()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Logout</button></div>
+      </header>
+      <div id="dashboard-alert" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
+      <div id="summary-cards" class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"></div>
+      <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div class="grid gap-3 md:grid-cols-5">
+          <input id="filter-search" class="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2" placeholder="Cari ID, nama, cabang...">
+          <select id="filter-status" class="rounded-lg border border-slate-300 px-3 py-2"><option value="">Semua Status</option><option>Baru</option><option>Disetujui</option><option>Ditolak</option><option>Selesai</option></select>
+          <input id="filter-date-from" class="rounded-lg border border-slate-300 px-3 py-2" type="date">
+          <input id="filter-date-to" class="rounded-lg border border-slate-300 px-3 py-2" type="date">
+        </div>
+        <div class="mt-3 flex justify-end"><button onclick="resetFilters()" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Reset Filter</button></div>
+      </section>
+      <section class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50"><tr><th class="px-4 py-3 text-left">No</th><th class="px-4 py-3 text-left">ID Pengajuan</th><th class="px-4 py-3 text-left">Waktu Submit</th><th class="px-4 py-3 text-left">Nama</th><th class="px-4 py-3 text-left">Bagian/Cabang</th><th class="px-4 py-3 text-left">Jml Item</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Aksi</th></tr></thead><tbody id="pengajuan-table" class="divide-y divide-slate-100"></tbody></table></div>
+        <div id="pagination" class="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"></div>
+      </section>
+    </div>
+  </section>
+
+  <section id="section-detail" class="hidden px-4 py-6 sm:py-10">
+    <div class="mx-auto max-w-6xl">
+      <div class="mb-5 flex items-center justify-between"><button onclick="backToDashboard()" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">← Kembali ke Dashboard</button><button onclick="handleLogout()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Logout</button></div>
+      <div id="detail-alert" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
+      <div id="detail-info" class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"></div>
+      <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"><h2 class="mb-4 text-lg font-semibold">Daftar Item</h2><div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50"><tr><th class="px-4 py-3 text-left">No</th><th class="px-4 py-3 text-left">Produk</th><th class="px-4 py-3 text-left">Model</th><th class="px-4 py-3 text-left">Nomor Seri</th></tr></thead><tbody id="items-table" class="divide-y divide-slate-100"></tbody></table></div></div>
+      <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"><h2 class="mb-4 text-lg font-semibold">Update Status</h2><div class="grid gap-4 sm:grid-cols-2"><label class="block text-sm font-medium">Status Baru<select id="statusBaru" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option>Baru</option><option>Disetujui</option><option>Ditolak</option><option>Selesai</option></select></label><div id="status-meta" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-700"></div><label class="block text-sm font-medium sm:col-span-2">Catatan Admin<textarea id="catatanAdmin" class="mt-1 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2"></textarea></label></div><div class="mt-4 flex justify-end"><button onclick="handleUpdateStatus()" class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Simpan Status</button></div></div>
+      <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"><h2 class="mb-4 text-lg font-semibold">Riwayat Status</h2><div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50"><tr><th class="px-4 py-3 text-left">Waktu</th><th class="px-4 py-3 text-left">Status Lama → Baru</th><th class="px-4 py-3 text-left">Catatan</th><th class="px-4 py-3 text-left">Admin</th></tr></thead><tbody id="history-table" class="divide-y divide-slate-100"></tbody></table></div></div>
+    </div>
+  </section>
+
+  <script>
+    const state = { token: sessionStorage.getItem('admin_token') || null, adminNama: sessionStorage.getItem('admin_nama') || null, currentView: 'dashboard', currentId: null, filters: { search: '', status: '', dateFrom: '', dateTo: '' }, page: 1, pageSize: 20, currentDetail: null };
+    let debounceTimer = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('dashboard-title').textContent = CONFIG.APP_NAME || 'Pengajuan Kartu Garansi';
+      document.title = 'Dashboard Admin - ' + (CONFIG.APP_NAME || 'Pengajuan Kartu Garansi');
+      bindFilters();
+      routeView();
+      if (state.token) loadDashboard();
+      ['login-username', 'login-password'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); }));
+    });
+
+    function routeView() {
+      document.getElementById('section-login').classList.toggle('hidden', !!state.token);
+      document.getElementById('section-dashboard').classList.toggle('hidden', !state.token || state.currentView !== 'dashboard');
+      document.getElementById('section-detail').classList.toggle('hidden', !state.token || state.currentView !== 'detail');
+      if (state.token) document.getElementById('admin-name').textContent = `Login sebagai ${state.adminNama || 'Admin'}`;
+    }
+
+    async function handleLogin() {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!username || !password) return showAlert('error', 'Username dan password wajib diisi', 'login-alert');
+      const btn = document.getElementById('btn-login'); btn.disabled = true; btn.textContent = 'Login...';
+      try {
+        const res = await callAPI('adminLogin', { username, password }, false);
+        if (!res.success) throw new Error(res.error || 'Login gagal');
+        state.token = res.data.token; state.adminNama = res.data.nama; state.currentView = 'dashboard';
+        sessionStorage.setItem('admin_token', state.token); sessionStorage.setItem('admin_nama', state.adminNama);
+        routeView(); await loadDashboard();
+      } catch (err) { showAlert('error', err.message, 'login-alert'); }
+      finally { btn.disabled = false; btn.textContent = 'Login'; }
+    }
+
+    async function handleLogout() {
+      try { if (state.token) await callAPI('adminLogout', {}, true); } catch (err) {}
+      sessionStorage.removeItem('admin_token'); sessionStorage.removeItem('admin_nama');
+      state.token = null; state.adminNama = null; state.currentView = 'dashboard'; state.currentId = null;
+      routeView();
+    }
+
+    async function loadDashboard() {
+      state.currentView = 'dashboard'; routeView(); showAlert('loading', 'Memuat dashboard...', 'dashboard-alert');
+      try {
+        const res = await callAPI('getDashboard', { ...state.filters, page: state.page, pageSize: state.pageSize });
+        if (!res.success) throw new Error(res.error || 'Gagal memuat dashboard');
+        renderSummaryCards(res.data.summary); renderTable(res.data.rows); renderPagination(res.data.totalRows, res.data.page, res.data.pageSize);
+        hideAlert('dashboard-alert');
+      } catch (err) { handleApiError(err, 'dashboard-alert'); }
+    }
+
+    async function loadDetail(idPengajuan) {
+      state.currentId = idPengajuan; state.currentView = 'detail'; routeView(); showAlert('loading', 'Memuat detail...', 'detail-alert');
+      try {
+        const res = await callAPI('getDetail', { idPengajuan });
+        if (!res.success) throw new Error(res.error || 'Gagal memuat detail');
+        state.currentDetail = res.data;
+        renderDetailInfo(res.data); renderItemsTable(res.data.items || []); renderStatusHistory(res.data.riwayat || []);
+        document.getElementById('statusBaru').value = res.data.status || 'Baru'; document.getElementById('catatanAdmin').value = res.data.catatanAdmin || '';
+        document.getElementById('status-meta').innerHTML = `<div>Status saat ini: ${statusBadge(res.data.status)}</div><div class="mt-2">Update terakhir: ${escapeHtml(formatDateTime(res.data.tanggalUpdateStatusTerakhir) || '-')}</div><div>User updater: ${escapeHtml(res.data.userUpdateStatus || '-')}</div>`;
+        hideAlert('detail-alert');
+      } catch (err) { handleApiError(err, 'detail-alert'); }
+    }
+
+    async function handleUpdateStatus() {
+      const statusBaru = document.getElementById('statusBaru').value;
+      const catatanAdmin = document.getElementById('catatanAdmin').value.trim();
+      document.getElementById('catatanAdmin').classList.remove('field-error');
+      if (statusBaru === 'Ditolak' && !catatanAdmin) { document.getElementById('catatanAdmin').classList.add('field-error'); return showAlert('error', 'Catatan Admin wajib diisi jika status Ditolak', 'detail-alert'); }
+      showAlert('loading', 'Menyimpan status...', 'detail-alert');
+      try {
+        const res = await callAPI('updateStatus', { idPengajuan: state.currentId, statusBaru, catatanAdmin });
+        if (!res.success) throw new Error(res.error || 'Gagal menyimpan status');
+        showAlert('success', 'Status berhasil disimpan', 'detail-alert');
+        await loadDetail(state.currentId);
+      } catch (err) { handleApiError(err, 'detail-alert'); }
+    }
+
+    function renderSummaryCards(summary) {
+      const cards = [['Total Pengajuan', summary.total, 'bg-white text-slate-900'], ['Baru', summary.baru, 'bg-blue-50 text-blue-800'], ['Disetujui', summary.disetujui, 'bg-green-50 text-green-800'], ['Ditolak', summary.ditolak, 'bg-red-50 text-red-800'], ['Selesai', summary.selesai, 'bg-slate-50 text-slate-800']];
+      document.getElementById('summary-cards').innerHTML = cards.map(([label, value, color]) => `<div class="rounded-2xl ${color} p-5 shadow-sm ring-1 ring-slate-200"><p class="text-sm font-semibold">${label}</p><p class="mt-2 text-3xl font-bold">${Number(value || 0)}</p></div>`).join('');
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('pengajuan-table');
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">Tidak ada data</td></tr>'; return; }
+      const offset = (state.page - 1) * state.pageSize;
+      tbody.innerHTML = rows.map((row, index) => `<tr><td class="px-4 py-3">${offset + index + 1}</td><td class="px-4 py-3 font-mono font-semibold text-blue-700">${escapeHtml(row.idPengajuan)}</td><td class="px-4 py-3">${escapeHtml(formatDateTime(row.timestampSubmit))}</td><td class="px-4 py-3">${escapeHtml(row.nama)}</td><td class="px-4 py-3">${escapeHtml(row.bagianCabang)}</td><td class="px-4 py-3">${escapeHtml(row.jumlahItem)}</td><td class="px-4 py-3">${statusBadge(row.status)}</td><td class="px-4 py-3"><button class="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white" onclick="loadDetail('${escapeAttr(row.idPengajuan)}')">Detail</button></td></tr>`).join('');
+    }
+
+    function renderPagination(total, page, pageSize) {
+      const start = total ? (page - 1) * pageSize + 1 : 0;
+      const end = Math.min(page * pageSize, total);
+      const lastPage = Math.max(Math.ceil(total / pageSize), 1);
+      document.getElementById('pagination').innerHTML = `<p class="text-sm text-slate-600">Menampilkan ${start}–${end} dari ${total} pengajuan</p><div class="flex gap-2"><button ${page <= 1 ? 'disabled' : ''} onclick="changePage(${page - 1})" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">Prev</button><span class="px-3 py-2 text-sm font-semibold">Hal. ${page} / ${lastPage}</span><button ${page >= lastPage ? 'disabled' : ''} onclick="changePage(${page + 1})" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">Next</button></div>`;
+    }
+
+    function renderDetailInfo(data) {
+      const fields = [['ID Pengajuan', data.idPengajuan], ['Waktu Submit', formatDateTime(data.timestampSubmit)], ['Nama', data.nama], ['Bagian/Cabang', data.bagianCabang], ['Pemilik', data.pemilik], ['Tanggal Form', formatDate(data.tanggalForm)], ['Alasan Pengajuan', data.alasanPengajuan], ['Catatan Tambahan', data.catatanTambahan || '-'], ['Jumlah Item', data.jumlahItem], ['File Hard Copy', data.fileHardCopyUrl ? `<a class="font-semibold text-blue-700 underline" href="${escapeAttr(data.fileHardCopyUrl)}" target="_blank" rel="noopener">Buka file</a>` : '-']];
+      document.getElementById('detail-info').innerHTML = `<h2 class="mb-4 text-lg font-semibold">Informasi Pengajuan</h2><div class="grid gap-3 sm:grid-cols-2">${fields.map(([label, value]) => `<div class="rounded-lg bg-slate-50 p-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">${label}</p><div class="mt-1 break-words text-sm font-medium">${typeof value === 'string' && value.startsWith('<a') ? value : escapeHtml(value)}</div></div>`).join('')}</div>`;
+    }
+
+    function renderItemsTable(items) {
+      const tbody = document.getElementById('items-table');
+      tbody.innerHTML = items.length ? items.map(item => `<tr><td class="px-4 py-3">${escapeHtml(item.noItem)}</td><td class="px-4 py-3">${escapeHtml(item.produk)}</td><td class="px-4 py-3">${escapeHtml(item.model)}</td><td class="px-4 py-3">${escapeHtml(item.nomorSeri)}</td></tr>`).join('') : '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Tidak ada item</td></tr>';
+    }
+
+    function renderStatusHistory(logs) {
+      const tbody = document.getElementById('history-table');
+      tbody.innerHTML = logs.length ? logs.map(log => `<tr><td class="px-4 py-3">${escapeHtml(formatDateTime(log.timestamp))}</td><td class="px-4 py-3">${escapeHtml(log.statusLama || '-')} → ${escapeHtml(log.statusBaru || '-')}</td><td class="px-4 py-3">${escapeHtml(log.catatanAdmin || '-')}</td><td class="px-4 py-3">${escapeHtml(log.user || '-')}</td></tr>`).join('') : '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Belum ada riwayat</td></tr>';
+    }
+
+    function applyFilters() { state.page = 1; state.filters = { search: document.getElementById('filter-search').value.trim(), status: document.getElementById('filter-status').value, dateFrom: document.getElementById('filter-date-from').value, dateTo: document.getElementById('filter-date-to').value }; loadDashboard(); }
+
+    async function callAPI(action, payload = {}, includeToken = true) {
+      const body = { action, ...(includeToken ? { token: state.token } : {}), ...payload };
+      const res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+      return res.json();
+    }
+
+    function bindFilters() {
+      document.getElementById('filter-search').addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(applyFilters, 300); });
+      ['filter-status', 'filter-date-from', 'filter-date-to'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+    }
+
+    function resetFilters() { ['filter-search', 'filter-status', 'filter-date-from', 'filter-date-to'].forEach(id => document.getElementById(id).value = ''); applyFilters(); }
+    function changePage(page) { state.page = page; loadDashboard(); }
+    function backToDashboard() { loadDashboard(); }
+
+    function showAlert(type, message, targetEl) {
+      const el = document.getElementById(targetEl);
+      const classes = { loading: 'border-blue-200 bg-blue-50 text-blue-800', success: 'border-green-200 bg-green-50 text-green-800', error: 'border-red-200 bg-red-50 text-red-800' };
+      el.className = `mb-5 rounded-lg border px-4 py-3 text-sm ${classes[type] || classes.error}`; el.innerHTML = message; el.classList.remove('hidden');
+    }
+    function hideAlert(targetEl) { document.getElementById(targetEl).classList.add('hidden'); }
+    function handleApiError(err, targetEl) { if (String(err.message).includes('Unauthorized')) handleLogout(); else showAlert('error', err.message || String(err), targetEl); }
+    function statusBadge(status) { const map = { Baru: 'bg-blue-100 text-blue-800', Disetujui: 'bg-green-100 text-green-800', Ditolak: 'bg-red-100 text-red-800', Selesai: 'bg-slate-200 text-slate-800' }; return `<span class="badge ${map[status] || 'bg-slate-100 text-slate-700'}">${escapeHtml(status || '-')}</span>`; }
+    function formatDateTime(value) { if (!value) return ''; const d = new Date(value); return isNaN(d) ? value : d.toLocaleString('id-ID'); }
+    function formatDate(value) { if (!value) return '-'; const d = new Date(String(value).slice(0, 10) + 'T00:00:00'); return isNaN(d) ? value : d.toLocaleDateString('id-ID'); }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[c])); }
+    function escapeAttr(value) { return escapeHtml(value).replace(/`/g, '&#096;'); }
+  </script>
+</body>
+</html>

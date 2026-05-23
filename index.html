@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pengajuan Kartu Garansi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <style>
+    @media print {
+      body > *:not(#section-print) { display: none !important; }
+      #section-print { display: block !important; }
+      .no-print { display: none !important; }
+      @page { size: A4; margin: 14mm; }
+      body { background: #fff !important; }
+    }
+    @media screen { #section-print { display: none; } }
+    .field-error { border-color: #ef4444 !important; background: #fef2f2; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <main id="section-form" class="mx-auto max-w-5xl px-4 py-6 sm:py-10">
+    <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-wide text-blue-700">Form Pengajuan</p>
+        <h1 id="app-title" class="text-2xl font-bold sm:text-3xl">Pengajuan Kartu Garansi</h1>
+      </div>
+      <a href="dashboard.html" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Dashboard Admin →</a>
+    </header>
+
+    <div id="alert-box" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
+
+    <form id="pengajuan-form" class="space-y-6" novalidate>
+      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <h2 class="mb-4 text-lg font-semibold">Data Pengaju</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="block text-sm font-medium">Nama <span class="text-red-600">*</span><input id="nama" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
+          <label class="block text-sm font-medium">Bagian/Cabang <span class="text-red-600">*</span><input id="bagianCabang" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
+          <label class="block text-sm font-medium">Pemilik <span class="text-red-600">*</span><input id="pemilik" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
+          <label class="block text-sm font-medium">Tanggal Form <span class="text-red-600">*</span><input id="tanggalForm" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="date" required></label>
+          <label class="block text-sm font-medium sm:col-span-2">Alasan Pengajuan Kartu Garansi Baru <span class="text-red-600">*</span><textarea id="alasanPengajuan" class="mt-1 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2" required></textarea></label>
+          <label class="block text-sm font-medium sm:col-span-2">Catatan Tambahan<textarea id="catatanTambahan" class="mt-1 min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2"></textarea></label>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div class="mb-4 flex items-center justify-between gap-4">
+          <h2 class="text-lg font-semibold">Daftar Item Produk</h2>
+          <button id="btn-add-item" type="button" class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700" onclick="addItem()">+ Tambah Item</button>
+        </div>
+        <div id="item-list" class="space-y-4"></div>
+      </section>
+
+      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <h2 class="mb-4 text-lg font-semibold">Upload File Hard Copy Bertanda Tangan</h2>
+        <input id="fileUpload" class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+        <p id="file-info" class="mt-2 text-sm text-slate-600">Belum ada file dipilih. File wajib saat submit, tidak wajib saat preview/cetak.</p>
+      </section>
+
+      <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <button type="button" onclick="handlePreviewCetak()" class="rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 hover:bg-slate-50">Preview / Cetak Form</button>
+        <button id="btn-submit" type="button" onclick="handleSubmit()" class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Submit Pengajuan</button>
+      </div>
+    </form>
+  </main>
+
+  <section id="section-print" class="mx-auto max-w-[210mm] bg-white p-6 text-sm text-slate-900">
+    <div id="print-content"></div>
+    <div class="no-print mt-6 flex justify-end gap-3">
+      <button onclick="backToForm()" class="rounded-lg border border-slate-300 px-4 py-2 font-semibold">Kembali ke Form</button>
+      <button onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Cetak</button>
+    </div>
+  </section>
+
+  <section id="section-success" class="hidden min-h-screen bg-slate-100 px-4 py-12">
+    <div class="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
+      <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-4xl text-green-700">✓</div>
+      <h1 class="text-2xl font-bold">Pengajuan berhasil dikirim!</h1>
+      <p class="mt-3 text-slate-600">ID Pengajuan Anda:</p>
+      <p id="success-id" class="mt-2 rounded-lg bg-slate-100 px-4 py-3 font-mono text-lg font-bold text-blue-700"></p>
+      <button onclick="resetForm()" class="mt-6 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Buat Pengajuan Baru</button>
+    </div>
+  </section>
+
+  <script>
+    let items = [{ produk: '', model: '', nomorSeri: '' }];
+    let lastValidationIncludesFile = false;
+    const maxItems = Number(CONFIG.MAX_ITEMS || 10);
+    const maxUploadMb = Number(CONFIG.MAX_UPLOAD_MB || 10);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('app-title').textContent = CONFIG.APP_NAME || 'Pengajuan Kartu Garansi';
+      document.title = CONFIG.APP_NAME || 'Pengajuan Kartu Garansi';
+      document.getElementById('tanggalForm').valueAsDate = new Date();
+      renderItems();
+      document.getElementById('fileUpload').addEventListener('change', updateFileInfo);
+      setupLiveValidation();
+    });
+
+    function renderItems() {
+      const list = document.getElementById('item-list');
+      list.innerHTML = items.map((item, index) => `
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4" data-item-card="${index}">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="font-semibold">Item #${index + 1}</h3>
+            ${items.length > 1 ? `<button type="button" class="text-sm font-semibold text-red-600 hover:text-red-700" onclick="removeItem(${index})">Hapus Item</button>` : ''}
+          </div>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <label class="text-sm font-medium">Produk <span class="text-red-600">*</span><input data-item-field="produk" data-index="${index}" value="${escapeAttr(item.produk)}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text"></label>
+            <label class="text-sm font-medium">Model <span class="text-red-600">*</span><input data-item-field="model" data-index="${index}" value="${escapeAttr(item.model)}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text"></label>
+            <label class="text-sm font-medium">Nomor Seri <span class="text-red-600">*</span><input data-item-field="nomorSeri" data-index="${index}" value="${escapeAttr(item.nomorSeri)}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text"></label>
+          </div>
+        </div>
+      `).join('');
+      document.querySelectorAll('[data-item-field]').forEach(input => {
+        input.addEventListener('input', event => {
+          const index = Number(event.target.dataset.index);
+          const field = event.target.dataset.itemField;
+          items[index][field] = event.target.value;
+          event.target.classList.remove('field-error');
+          refreshValidationErrors();
+        });
+      });
+      const addBtn = document.getElementById('btn-add-item');
+      addBtn.disabled = items.length >= maxItems;
+      addBtn.classList.toggle('opacity-50', addBtn.disabled);
+      addBtn.classList.toggle('cursor-not-allowed', addBtn.disabled);
+    }
+
+    function addItem() {
+      if (items.length >= maxItems) return showAlert('error', `Jumlah item maksimal ${maxItems}.`);
+      items.push({ produk: '', model: '', nomorSeri: '' });
+      renderItems();
+      refreshValidationErrors();
+    }
+
+    function removeItem(index) {
+      if (items.length <= 1) return;
+      items.splice(index, 1);
+      renderItems();
+      refreshValidationErrors();
+    }
+
+    function validateForm(includeFile) {
+      lastValidationIncludesFile = includeFile;
+      const errors = getValidationErrors(includeFile);
+      if (errors.length) {
+        showAlert('error', [...new Set(errors)].join('<br>'));
+        return false;
+      }
+      hideAlert();
+      return true;
+    }
+
+    function getValidationErrors(includeFile) {
+      clearErrors();
+      const errors = [];
+      const requiredFields = [
+        ['nama', 'Nama wajib diisi'],
+        ['bagianCabang', 'Bagian/Cabang wajib diisi'],
+        ['pemilik', 'Pemilik wajib diisi'],
+        ['tanggalForm', 'Tanggal Form wajib diisi'],
+        ['alasanPengajuan', 'Alasan Pengajuan wajib diisi'],
+      ];
+      requiredFields.forEach(([id, message]) => {
+        const el = document.getElementById(id);
+        if (!el.value.trim()) { errors.push(message); el.classList.add('field-error'); }
+      });
+      const dateValue = document.getElementById('tanggalForm').value;
+      if (dateValue) {
+        const selected = new Date(dateValue + 'T00:00:00');
+        const max = new Date(); max.setHours(23, 59, 59, 999); max.setDate(max.getDate() + 7);
+        if (selected > max) { errors.push('Tanggal Form tidak boleh lebih dari 7 hari ke depan'); document.getElementById('tanggalForm').classList.add('field-error'); }
+      }
+      if (!items.length) errors.push('Minimal 1 item produk wajib diisi');
+      document.querySelectorAll('[data-item-field]').forEach(input => {
+        if (!input.value.trim()) { errors.push(`Item #${Number(input.dataset.index) + 1} belum lengkap`); input.classList.add('field-error'); }
+      });
+      if (includeFile) {
+        const file = document.getElementById('fileUpload').files[0];
+        const fileError = validateFile(file);
+        if (fileError) { errors.push(fileError); document.getElementById('fileUpload').classList.add('field-error'); }
+      }
+      return errors;
+    }
+
+    function refreshValidationErrors() {
+      const box = document.getElementById('alert-box');
+      if (box.dataset.type !== 'error' || box.classList.contains('hidden')) return;
+      const errors = getValidationErrors(lastValidationIncludesFile);
+      if (errors.length) showAlert('error', [...new Set(errors)].join('<br>'));
+      else hideAlert();
+    }
+
+    function setupLiveValidation() {
+      ['nama', 'bagianCabang', 'pemilik', 'tanggalForm', 'alasanPengajuan'].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', refreshValidationErrors);
+        el.addEventListener('change', refreshValidationErrors);
+      });
+    }
+
+    function handlePreviewCetak() {
+      if (!validateForm(false)) return;
+      document.getElementById('print-content').innerHTML = buildPrintHtml();
+      document.getElementById('section-form').classList.add('hidden');
+      document.getElementById('section-success').classList.add('hidden');
+      document.getElementById('section-print').style.display = 'block';
+      setTimeout(() => window.print(), 100);
+    }
+
+    async function handleSubmit() {
+      if (!validateForm(true)) return;
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+      btn.textContent = 'Mengirim...';
+      showAlert('loading', 'Mengirim pengajuan...');
+      try {
+        const file = document.getElementById('fileUpload').files[0];
+        const payload = collectPayload();
+        payload.fileBase64 = await fileToBase64(file);
+        payload.fileExtension = getFileExtension(file.name);
+        payload.fileMimeType = file.type;
+        const result = await submitToAPI(payload);
+        if (!result.success) throw new Error(result.error || 'Pengajuan gagal dikirim');
+        showSuccess(result.data.idPengajuan);
+      } catch (error) {
+        showAlert('error', error.message || String(error));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Pengajuan';
+      }
+    }
+
+    async function submitToAPI(payload) {
+      const res = await fetch(CONFIG.API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'submitPengajuan', ...payload }),
+      });
+      return res.json();
+    }
+
+    function showAlert(type, message) {
+      const box = document.getElementById('alert-box');
+      const classes = {
+        loading: 'border-blue-200 bg-blue-50 text-blue-800',
+        success: 'border-green-200 bg-green-50 text-green-800',
+        error: 'border-red-200 bg-red-50 text-red-800',
+      };
+      box.dataset.type = type;
+      box.className = `mb-5 rounded-lg border px-4 py-3 text-sm ${classes[type] || classes.error}`;
+      box.innerHTML = message;
+      box.classList.remove('hidden');
+    }
+
+    function hideAlert() {
+      const box = document.getElementById('alert-box');
+      box.classList.add('hidden');
+      box.innerHTML = '';
+      delete box.dataset.type;
+    }
+
+    function resetForm() {
+      document.getElementById('pengajuan-form').reset();
+      document.getElementById('tanggalForm').valueAsDate = new Date();
+      items = [{ produk: '', model: '', nomorSeri: '' }];
+      renderItems();
+      document.getElementById('file-info').textContent = 'Belum ada file dipilih. File wajib saat submit, tidak wajib saat preview/cetak.';
+      hideAlert();
+      document.getElementById('section-success').classList.add('hidden');
+      document.getElementById('section-print').style.display = 'none';
+      document.getElementById('section-form').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function collectPayload() {
+      return {
+        nama: document.getElementById('nama').value.trim(),
+        bagianCabang: document.getElementById('bagianCabang').value.trim(),
+        pemilik: document.getElementById('pemilik').value.trim(),
+        tanggalForm: document.getElementById('tanggalForm').value,
+        alasanPengajuan: document.getElementById('alasanPengajuan').value.trim(),
+        catatanTambahan: document.getElementById('catatanTambahan').value.trim(),
+        items: items.map(item => ({ produk: item.produk.trim(), model: item.model.trim(), nomorSeri: item.nomorSeri.trim() })),
+      };
+    }
+
+    function buildPrintHtml() {
+      const data = collectPayload();
+      const printedAt = new Date().toLocaleString('id-ID');
+      const metadataRows = [
+        ['Nama', data.nama], ['Bagian/Cabang', data.bagianCabang], ['Pemilik', data.pemilik], ['Tanggal Form', formatDate(data.tanggalForm)], ['Alasan Pengajuan', data.alasanPengajuan], ['Catatan Tambahan', data.catatanTambahan || '-'],
+      ];
+      if (data.items.length === 1) {
+        metadataRows.push(['Produk', data.items[0].produk], ['Model', data.items[0].model], ['Nomor Seri', data.items[0].nomorSeri]);
+      }
+      return `
+        <div class="border-b border-slate-300 pb-4 text-center">
+          <h1 class="text-xl font-bold">${escapeHtml(CONFIG.APP_NAME || 'Pengajuan Kartu Garansi')}</h1>
+          <p class="mt-1 text-xs text-slate-600">Tanggal Cetak: ${escapeHtml(printedAt)}</p>
+        </div>
+        <table class="mt-5 w-full border-collapse text-sm">${metadataRows.map(([label, value]) => `<tr><th class="w-1/3 border border-slate-400 bg-slate-100 p-2 text-left">${escapeHtml(label)}</th><td class="border border-slate-400 p-2">${escapeHtml(value)}</td></tr>`).join('')}</table>
+        ${data.items.length > 1 ? `<h2 class="mt-6 font-bold">Daftar Item</h2><table class="mt-2 w-full border-collapse text-sm"><thead><tr><th class="border border-slate-400 bg-slate-100 p-2">No</th><th class="border border-slate-400 bg-slate-100 p-2">Produk</th><th class="border border-slate-400 bg-slate-100 p-2">Model</th><th class="border border-slate-400 bg-slate-100 p-2">Nomor Seri</th></tr></thead><tbody>${data.items.map((item, index) => `<tr><td class="border border-slate-400 p-2 text-center">${index + 1}</td><td class="border border-slate-400 p-2">${escapeHtml(item.produk)}</td><td class="border border-slate-400 p-2">${escapeHtml(item.model)}</td><td class="border border-slate-400 p-2">${escapeHtml(item.nomorSeri)}</td></tr>`).join('')}</tbody></table>` : ''}
+        <table class="mt-8 w-full table-fixed border-collapse text-[9px]"><thead><tr>${['Diajukan', 'Diketahui', 'Disetujui', 'Diberikan', 'Disetujui'].map(text => `<th class="w-1/5 border border-black p-1 text-center font-bold">${text}</th>`).join('')}</tr></thead><tbody><tr>${Array.from({ length: 5 }).map(() => '<td class="h-20 w-1/5 border border-black p-1"></td>').join('')}</tr><tr>${['', 'CS Head', 'Branch Manager', 'Controller', 'Div. Head'].map(text => `<td class="w-1/5 border border-black p-1 text-center font-bold">${text}</td>`).join('')}</tr></tbody></table>
+        <div class="mt-2 text-[9px] leading-tight"><p class="font-bold">Catatan:</p><p>1. Untuk permintaan Kartu Garansi mohon diisi nama jelasnya.</p><p>2. Untuk permintaan melalui cabang, kolom diketahui harus diisi oleh kepala service.</p></div>
+      `;
+    }
+
+    function backToForm() {
+      document.getElementById('section-print').style.display = 'none';
+      document.getElementById('section-form').classList.remove('hidden');
+    }
+
+    function showSuccess(idPengajuan) {
+      document.getElementById('success-id').textContent = idPengajuan;
+      document.getElementById('section-form').classList.add('hidden');
+      document.getElementById('section-print').style.display = 'none';
+      document.getElementById('section-success').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateFileInfo() {
+      const file = document.getElementById('fileUpload').files[0];
+      const info = document.getElementById('file-info');
+      document.getElementById('fileUpload').classList.remove('field-error');
+      if (!file) {
+        info.textContent = 'Belum ada file dipilih. File wajib saat submit, tidak wajib saat preview/cetak.';
+        info.className = 'mt-2 text-sm text-slate-600';
+        refreshValidationErrors();
+        return;
+      }
+      const error = validateFile(file);
+      info.textContent = `${file.name} (${formatBytes(file.size)})${error ? ' — ' + error : ''}`;
+      info.className = `mt-2 text-sm ${error ? 'text-red-700' : 'text-slate-600'}`;
+      refreshValidationErrors();
+    }
+
+    function validateFile(file) {
+      if (!file) return 'File hard copy wajib dilampirkan';
+      const ext = getFileExtension(file.name);
+      if (!['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) return 'Format file harus PDF/JPG/JPEG/PNG';
+      if (file.size > maxUploadMb * 1024 * 1024) return `Ukuran file tidak boleh melebihi ${maxUploadMb}MB`;
+      return '';
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function clearErrors() { document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error')); }
+    function getFileExtension(name) { return String(name).split('.').pop().toLowerCase(); }
+    function formatBytes(bytes) { return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`; }
+    function formatDate(value) { return value ? new Date(value + 'T00:00:00').toLocaleDateString('id-ID') : '-'; }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[c])); }
+    function escapeAttr(value) { return escapeHtml(value).replace(/`/g, '&#096;'); }
+  </script>
+</body>
+</html>

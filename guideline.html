@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOP Guideline Update Sistem Pengajuan Kartu Garansi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-900">
+  <main class="mx-auto max-w-5xl px-4 py-8 sm:py-12">
+    <header class="mb-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <p class="text-sm font-semibold uppercase tracking-wide text-blue-700">SOP Guideline</p>
+      <h1 class="mt-2 text-3xl font-bold">Update Sistem Pengajuan Kartu Garansi</h1>
+      <p class="mt-3 max-w-3xl text-slate-600">Panduan ini digunakan saat melakukan update sistem lokal/static HTML yang terhubung ke Google Apps Script API. Fokusnya adalah memastikan perubahan frontend, backend, data Google Sheets, dan upload Google Drive tetap sinkron, aman, dan bisa di-rollback.</p>
+    </header>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">1. Arsitektur Sistem</h2>
+      <p class="mt-4 text-slate-700">Sistem ini <strong>bukan</strong> web app yang seluruh file HTML-nya di-host di Google Apps Script. Arsitektur yang dipakai adalah:</p>
+      <div class="mt-4 grid gap-4 md:grid-cols-3">
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 class="font-semibold text-blue-900">Frontend Lokal/Static</h3>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-blue-900">
+            <li><code>index.html</code></li>
+            <li><code>dashboard.html</code></li>
+            <li><code>guideline.html</code></li>
+            <li><code>config.js</code></li>
+          </ul>
+          <p class="mt-3 text-sm text-blue-900">File HTML dibuka langsung di browser atau didistribusikan sebagai file static.</p>
+        </div>
+        <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+          <h3 class="font-semibold text-indigo-900">Backend API</h3>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-indigo-900">
+            <li><code>Code.gs</code></li>
+            <li>Google Apps Script Web App</li>
+            <li>Endpoint <code>doPost</code> dan <code>doGet</code></li>
+          </ul>
+          <p class="mt-3 text-sm text-indigo-900">Frontend memanggil backend melalui <code>CONFIG.API_URL</code> di <code>config.js</code>.</p>
+        </div>
+        <div class="rounded-xl border border-green-200 bg-green-50 p-4">
+          <h3 class="font-semibold text-green-900">Data & File</h3>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-green-900">
+            <li>Google Sheets</li>
+            <li>Google Drive</li>
+            <li>Trigger email digest</li>
+          </ul>
+          <p class="mt-3 text-sm text-green-900">Data pengajuan tersimpan di Sheets, sedangkan file signed tersimpan di Drive.</p>
+        </div>
+      </div>
+      <div class="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+        <p><strong>Catatan CORS:</strong> frontend mengirim request dengan <code>Content-Type: text/plain;charset=utf-8</code> agar request dari HTML lokal tidak memicu CORS preflight. Jika browser tetap memblokir request lintas origin, pertimbangkan opsi hosting/proxy yang mendukung CORS eksplisit.</p>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">2. Tujuan SOP</h2>
+      <ul class="mt-4 list-disc space-y-2 pl-6 text-slate-700">
+        <li>Memastikan update tidak langsung mengganggu data production.</li>
+        <li>Memastikan file frontend lokal/static dan backend Apps Script memakai environment yang sama.</li>
+        <li>Menjaga agar data pengajuan, file upload, dashboard admin, dan email digest tetap konsisten.</li>
+        <li>Mencegah kesalahan seperti meng-upload file HTML lokal ke Apps Script atau lupa mengganti <code>CONFIG.API_URL</code>.</li>
+        <li>Menyediakan langkah rollback untuk frontend dan backend secara terpisah.</li>
+      </ul>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">3. Ruang Lingkup Update</h2>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-4">
+          <h3 class="font-semibold">Frontend Lokal/Static</h3>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+            <li><code>index.html</code> — form pengajuan, simpan draft, resume draft, dan submit final.</li>
+            <li><code>dashboard.html</code> — dashboard Admin/Controller.</li>
+            <li><code>guideline.html</code> — dokumen SOP lokal/static.</li>
+            <li><code>config.js</code> — URL backend API dan konfigurasi frontend.</li>
+          </ul>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+          <h3 class="font-semibold">Backend Google Apps Script</h3>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+            <li><code>Code.gs</code> — endpoint API, validasi, business logic, Drive upload, dashboard API.</li>
+            <li>Google Sheets — struktur sheet dan data pengajuan.</li>
+            <li>Google Drive — folder file hard copy signed.</li>
+            <li>Trigger Apps Script — email digest dan proses terjadwal.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <p><strong>Penting:</strong> jangan menyamakan deploy frontend dan backend. <code>Code.gs</code> di-update di Apps Script, sedangkan file HTML tetap file lokal/static yang perlu diganti atau didistribusikan ke user.</p>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">4. Prinsip Best Practice</h2>
+      <ol class="mt-4 list-decimal space-y-3 pl-6 text-slate-700">
+        <li><strong>Jangan update langsung ke production tanpa uji staging.</strong> Validasi frontend lokal/static dan backend API secara end-to-end.</li>
+        <li><strong>Backup sebelum deploy.</strong> Backup Google Sheet, kode Apps Script lama, dan salinan file frontend lama.</li>
+        <li><strong>Pastikan URL API benar.</strong> Cek <code>CONFIG.API_URL</code> sebelum smoke test, karena frontend bisa saja masih mengarah ke backend lama.</li>
+        <li><strong>Gunakan rollout bertahap.</strong> Uji dengan 1 cabang/admin lebih dulu sebelum dipakai semua user.</li>
+        <li><strong>Jalankan update saat jam sepi.</strong> Hindari update ketika user sedang aktif mengisi form atau upload file.</li>
+        <li><strong>Siapkan rollback.</strong> Frontend dan backend bisa di-rollback terpisah, tetapi harus tetap kompatibel API.</li>
+      </ol>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">5. Checklist Sebelum Update</h2>
+      <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-4 py-3 text-left">No</th>
+              <th class="px-4 py-3 text-left">Checklist</th>
+              <th class="px-4 py-3 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            <tr><td class="px-4 py-3">1</td><td class="px-4 py-3">Backup Google Sheet production.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">2</td><td class="px-4 py-3">Backup kode <code>Code.gs</code> production.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">3</td><td class="px-4 py-3">Backup file frontend lama: <code>index.html</code>, <code>dashboard.html</code>, <code>guideline.html</code>, dan <code>config.js</code>.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">4</td><td class="px-4 py-3">Catat URL Web App production yang sedang aktif.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">5</td><td class="px-4 py-3">Siapkan spreadsheet dan folder Drive test/staging.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">6</td><td class="px-4 py-3">Pastikan tidak ada user sedang submit/upload saat update production.</td><td class="px-4 py-3">☐</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">6. Prosedur Update di Staging</h2>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+          <h3 class="font-semibold text-indigo-900">A. Backend Staging</h3>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-indigo-900">
+            <li>Buat atau copy project Google Apps Script untuk staging.</li>
+            <li>Salin kode terbaru <code>Code.gs</code> ke Apps Script staging.</li>
+            <li>Pastikan resource staging tidak memakai data production, terutama spreadsheet dan folder Drive.</li>
+            <li>Jalankan <code>setupApp()</code> jika schema/config staging perlu dibuat atau diperbarui.</li>
+            <li>Pastikan sheet <code>Pengajuan</code> memiliki kolom draft: <code>Resume Token</code>, <code>Draft Created At</code>, <code>Draft Updated At</code>, dan <code>Submitted At</code>.</li>
+            <li>Deploy Apps Script staging sebagai Web App dengan akses sesuai kebutuhan test.</li>
+            <li>Catat URL Web App staging.</li>
+          </ol>
+        </div>
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 class="font-semibold text-blue-900">B. Frontend Staging</h3>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-blue-900">
+            <li>Gunakan file lokal/static dari repo: <code>index.html</code>, <code>dashboard.html</code>, <code>guideline.html</code>, dan <code>config.js</code>.</li>
+            <li>Update <code>CONFIG.API_URL</code> di <code>config.js</code> agar mengarah ke URL Web App staging.</li>
+            <li>Buka <code>index.html</code> langsung di browser.</li>
+            <li>Buka <code>dashboard.html</code> langsung di browser.</li>
+            <li>Jalankan pengujian flow utama dan edge case.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">7. Verifikasi Flow Utama</h2>
+      <div class="mt-4 space-y-4">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <h3 class="font-semibold">A. Verifikasi Konektivitas</h3>
+          <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+            <li>Buka <code>config.js</code> dan pastikan <code>CONFIG.API_URL</code> mengarah ke environment yang sedang diuji.</li>
+            <li>Buka <code>index.html</code> langsung di browser.</li>
+            <li>Buka <code>dashboard.html</code> langsung di browser.</li>
+            <li>Pastikan request frontend masuk ke Web App Apps Script yang benar.</li>
+          </ol>
+        </div>
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 class="font-semibold text-blue-900">B. Simpan Draft & Cetak</h3>
+          <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-blue-900">
+            <li>Isi form lengkap tanpa upload file.</li>
+            <li>Klik <strong>Simpan Draft & Cetak</strong>.</li>
+            <li>Pastikan sistem menampilkan ID Pengajuan dan Kode Lanjutkan.</li>
+            <li>Pastikan printout memuat ID Pengajuan.</li>
+            <li>Pastikan row di sheet <code>Pengajuan</code> berstatus <code>Menunggu Upload</code>.</li>
+          </ol>
+        </div>
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 class="font-semibold text-blue-900">C. Lanjutkan Draft</h3>
+          <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-blue-900">
+            <li>Reload halaman form lokal.</li>
+            <li>Masukkan ID Pengajuan dan Kode Lanjutkan.</li>
+            <li>Klik <strong>Muat Draft</strong>.</li>
+            <li>Pastikan semua field dan item produk terisi kembali.</li>
+          </ol>
+        </div>
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 class="font-semibold text-blue-900">D. Submit Final</h3>
+          <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-blue-900">
+            <li>Upload file hard copy signed dalam format PDF/JPG/PNG.</li>
+            <li>Klik <strong>Submit Final</strong>.</li>
+            <li>Pastikan row yang sama berubah dari <code>Menunggu Upload</code> menjadi <code>Baru</code>.</li>
+            <li>Pastikan file tersimpan di Google Drive.</li>
+            <li>Pastikan dashboard admin menampilkan pengajuan tersebut.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">8. Verifikasi Edge Case</h2>
+      <ul class="mt-4 list-disc space-y-2 pl-6 text-slate-700">
+        <li>Masukkan token salah: sistem harus menolak draft.</li>
+        <li>Coba muat draft yang sudah final submit: sistem harus menolak.</li>
+        <li>Simpan ulang draft setelah mengubah item: data item tidak boleh duplikat di sheet <code>PengajuanItems</code>.</li>
+        <li>Upload file dengan format tidak valid: sistem harus menolak.</li>
+        <li>Upload file melebihi batas ukuran: sistem harus menolak.</li>
+        <li>Buka dashboard admin: status <code>Menunggu Upload</code> tidak boleh tampil.</li>
+        <li>Pastikan email digest tidak memasukkan draft berstatus <code>Menunggu Upload</code>.</li>
+        <li>Ganti <code>CONFIG.API_URL</code> ke environment salah pada staging test: test harus dianggap gagal karena frontend/backend tidak sinkron.</li>
+      </ul>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">9. Prosedur Update Production</h2>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+          <h3 class="font-semibold text-indigo-900">A. Backend Production</h3>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-indigo-900">
+            <li>Pastikan semua checklist staging sudah lulus.</li>
+            <li>Backup kode Apps Script production, Google Sheet production, dan catat URL Web App aktif.</li>
+            <li>Update <code>Code.gs</code> di project Google Apps Script production.</li>
+            <li>Jalankan <code>setupApp()</code> satu kali bila schema perlu dipastikan.</li>
+            <li>Deploy/update Web App production.</li>
+            <li>Catat URL Web App production baru jika deployment menghasilkan URL baru.</li>
+          </ol>
+        </div>
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 class="font-semibold text-blue-900">B. Frontend Production</h3>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-blue-900">
+            <li>Update atau distribusikan file lokal/static terbaru ke lokasi yang dipakai user.</li>
+            <li>Sertakan file <code>index.html</code>, <code>dashboard.html</code>, <code>guideline.html</code>, dan <code>config.js</code> jika berubah.</li>
+            <li>Pastikan <code>CONFIG.API_URL</code> di <code>config.js</code> mengarah ke backend production yang benar.</li>
+            <li>Instruksikan user/admin membuka file HTML lokal/static yang sudah diperbarui.</li>
+            <li>Lakukan smoke test production menggunakan satu pengajuan test.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">10. Smoke Test Production</h2>
+      <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-4 py-3 text-left">Test</th>
+              <th class="px-4 py-3 text-left">Expected Result</th>
+              <th class="px-4 py-3 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            <tr><td class="px-4 py-3">Cek <code>CONFIG.API_URL</code></td><td class="px-4 py-3">Mengarah ke Web App production yang benar.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">Buka frontend lokal</td><td class="px-4 py-3"><code>index.html</code> dan <code>dashboard.html</code> terbuka langsung di browser.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">Simpan Draft & Cetak</td><td class="px-4 py-3">Draft tersimpan sebagai <code>Menunggu Upload</code>.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">Muat Draft</td><td class="px-4 py-3">Form terisi ulang sesuai data draft.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">Submit Final</td><td class="px-4 py-3">Status berubah menjadi <code>Baru</code> dan file masuk Drive.</td><td class="px-4 py-3">☐</td></tr>
+            <tr><td class="px-4 py-3">Dashboard Admin</td><td class="px-4 py-3">Pengajuan final tampil, draft belum final tidak tampil.</td><td class="px-4 py-3">☐</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">11. Monitoring Setelah Release</h2>
+      <ul class="mt-4 list-disc space-y-2 pl-6 text-slate-700">
+        <li>Monitor 2–3 pengajuan pertama secara manual di Google Sheet.</li>
+        <li>Pastikan file upload masuk ke folder Drive yang benar.</li>
+        <li>Pastikan admin bisa membuka <code>dashboard.html</code> lokal dan login ke backend production.</li>
+        <li>Pastikan tidak ada draft yang masuk ke dashboard admin sebelum final submit.</li>
+        <li>Pastikan user/cabang memakai file frontend versi terbaru, bukan salinan lama.</li>
+        <li>Catat error yang muncul dari user/cabang selama hari pertama rollout.</li>
+      </ul>
+    </section>
+
+    <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">12. Rollback Plan</h2>
+      <div class="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+        <p class="font-semibold">Gunakan rollback jika form lokal tidak bisa submit, dashboard error, file upload gagal massal, atau data production terpengaruh.</p>
+      </div>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-4">
+          <h3 class="font-semibold">Rollback Backend</h3>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+            <li>Kembalikan <code>Code.gs</code> ke versi backup sebelumnya.</li>
+            <li>Deploy ulang Web App versi lama atau deployment sebelumnya.</li>
+            <li>Jika URL Web App berubah kembali, catat URL lama yang harus dipakai frontend.</li>
+            <li>Jangan hapus kolom baru dari Google Sheet sebelum memastikan tidak ada data penting di dalamnya.</li>
+          </ol>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+          <h3 class="font-semibold">Rollback Frontend</h3>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+            <li>Restore file frontend lokal/static versi sebelumnya.</li>
+            <li>Pastikan file yang di-restore mencakup <code>index.html</code>, <code>dashboard.html</code>, <code>guideline.html</code>, dan <code>config.js</code>.</li>
+            <li>Jika <code>config.js</code> sempat diubah, arahkan kembali ke URL Web App yang kompatibel.</li>
+            <li>Validasi ulang flow lama: isi form, upload file, submit, dan cek dashboard.</li>
+          </ol>
+        </div>
+      </div>
+      <p class="mt-4 text-sm text-slate-600">Frontend dan backend bisa di-rollback terpisah, tetapi keduanya harus tetap kompatibel. Jangan biarkan frontend baru memanggil backend lama jika kontrak API sudah berubah.</p>
+    </section>
+
+    <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-xl font-bold">13. Rekomendasi Rollout</h2>
+      <p class="mt-4 text-slate-700">Gunakan pendekatan <strong>parallel rollout</strong>: sistem baru dicoba oleh satu cabang/admin terlebih dahulu selama 1–2 hari. Pastikan mereka memakai file frontend lokal/static terbaru dan <code>CONFIG.API_URL</code> mengarah ke backend yang benar. Jika tidak ada masalah pada draft, resume, upload file, dan dashboard, barulah sistem dijadikan alur utama untuk semua user.</p>
+      <div class="mt-4 rounded-xl bg-green-50 p-4 text-green-900">
+        <p class="font-semibold">Kriteria Go-Live</p>
+        <ul class="mt-2 list-disc space-y-1 pl-5 text-sm">
+          <li>Flow simpan draft, muat draft, dan submit final berhasil dari file HTML lokal/static.</li>
+          <li><code>CONFIG.API_URL</code> sudah menunjuk ke Web App production yang benar.</li>
+          <li>Data tidak duplikat di <code>PengajuanItems</code>.</li>
+          <li>Draft tidak tampil di dashboard sebelum final submit.</li>
+          <li>Admin bisa memproses status setelah pengajuan menjadi <code>Baru</code>.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

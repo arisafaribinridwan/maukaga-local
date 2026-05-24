@@ -33,12 +33,12 @@
     <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div class="mb-4 flex flex-col gap-1">
         <h2 class="text-lg font-semibold">Lanjutkan Draft</h2>
-        <p class="text-sm text-slate-600">Gunakan ID Pengajuan dan Kode Lanjutkan untuk upload dokumen signed setelah form selesai ditandatangani.</p>
+        <p class="text-sm text-slate-600">Lanjutkan draft terakhir dari browser ini, atau buka link lanjutkan dari saat draft disimpan.</p>
       </div>
-      <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+      <div class="grid gap-3 md:grid-cols-[1fr_auto_auto]">
         <label class="block text-sm font-medium">ID Pengajuan<input id="resume-id" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono" type="text" placeholder="KG-YYYYMMDD-0001"></label>
-        <label class="block text-sm font-medium">Kode Lanjutkan<input id="resume-token" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono" type="text" placeholder="Kode dari saat simpan draft"></label>
         <div class="flex items-end"><button id="btn-load-draft" type="button" onclick="handleLoadDraft()" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-800 hover:bg-slate-50">Muat Draft</button></div>
+        <div class="flex items-end"><button id="btn-load-stored-draft" type="button" onclick="handleLoadStoredDraft()" class="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">Draft Terakhir</button></div>
       </div>
       <div id="draft-status" class="mt-3 hidden rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800"></div>
     </section>
@@ -79,6 +79,7 @@
 
   <section id="section-print" class="mx-auto max-w-[210mm] bg-white p-6 text-sm text-slate-900">
     <div id="print-content"></div>
+    <div id="print-resume-status" class="no-print mt-4 hidden rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800"></div>
     <div class="no-print mt-6 flex justify-end gap-3">
       <button onclick="backToForm()" class="rounded-lg border border-slate-300 px-4 py-2 font-semibold">Kembali ke Form</button>
       <button onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Cetak</button>
@@ -108,10 +109,10 @@
       document.getElementById('app-title').textContent = CONFIG.APP_NAME || 'Pengajuan Kartu Garansi';
       document.title = CONFIG.APP_NAME || 'Pengajuan Kartu Garansi';
       document.getElementById('tanggalForm').valueAsDate = new Date();
-      restoreDraftReference();
       renderItems();
       document.getElementById('fileUpload').addEventListener('change', updateFileInfo);
       setupLiveValidation();
+      initializeDraftResume();
     });
 
     function renderItems() {
@@ -232,8 +233,9 @@
         const result = await callAPI('saveDraftPengajuan', payload);
         if (!result.success) throw new Error(result.error || 'Draft gagal disimpan');
         setDraftReference(result.data.idPengajuan, result.data.resumeToken);
+        const resumeUrl = buildResumeUrl(currentDraftId, currentResumeToken);
         document.getElementById('print-content').innerHTML = buildPrintHtml(currentDraftId);
-        showAlert('success', `Draft tersimpan. Simpan ID <strong>${escapeHtml(currentDraftId)}</strong> dan Kode Lanjutkan <strong class="font-mono">${escapeHtml(currentResumeToken)}</strong> untuk upload dokumen signed nanti.`);
+        showAlert('success', `Draft tersimpan. Simpan ID <strong>${escapeHtml(currentDraftId)}</strong> di printout. Untuk lanjut dari perangkat lain, buka <a class="font-semibold underline" href="${escapeAttr(resumeUrl)}">Link Lanjutkan Draft</a>.`);
         document.getElementById('section-form').classList.add('hidden');
         document.getElementById('section-success').classList.add('hidden');
         document.getElementById('section-print').style.display = 'block';
@@ -246,30 +248,49 @@
       }
     }
 
-    async function handleLoadDraft() {
-      const idPengajuan = document.getElementById('resume-id').value.trim();
-      const resumeToken = document.getElementById('resume-token').value.trim();
-      if (!idPengajuan || !resumeToken) return showAlert('error', 'ID Pengajuan dan Kode Lanjutkan wajib diisi untuk memuat draft.');
-      const btn = document.getElementById('btn-load-draft');
-      btn.disabled = true;
-      btn.textContent = 'Memuat...';
+    async function handleLoadDraft(reference = {}) {
+      let idPengajuan = String(reference.idPengajuan || document.getElementById('resume-id').value || '').trim();
+      let resumeToken = String(reference.resumeToken || '').trim();
+      const saved = getStoredDraftReference();
+      if (!resumeToken && saved.idPengajuan === idPengajuan) resumeToken = saved.resumeToken;
+      if (!idPengajuan) return showAlert('error', 'Masukkan ID Pengajuan, klik Draft Terakhir, atau buka Link Lanjutkan Draft.');
+      const btn = document.getElementById(reference.buttonId || 'btn-load-draft');
+      const initialText = btn ? btn.textContent : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Memuat...';
+      }
       showAlert('loading', 'Memuat draft...');
       try {
+        if (!resumeToken) {
+          const statusResult = await callAPI('checkDraftPengajuanStatus', { idPengajuan });
+          if (!statusResult.success) throw new Error(statusResult.error || 'ID Pengajuan tidak bisa dilanjutkan.');
+          throw new Error('Draft ditemukan, tetapi link lanjutannya tidak tersimpan di browser ini. Buka Link Lanjutkan Draft dari saat draft disimpan, atau lanjutkan dari browser yang sama saat draft dibuat.');
+        }
         const result = await callAPI('getDraftPengajuan', { idPengajuan, resumeToken });
         if (!result.success) throw new Error(result.error || 'Draft gagal dimuat');
         fillFormFromDraft(result.data);
         setDraftReference(idPengajuan, resumeToken);
+        if (reference.fromUrl) clearResumeParamsFromUrl();
         showAlert('success', `Draft ${escapeHtml(idPengajuan)} berhasil dimuat. Upload file signed lalu klik Submit Final.`);
       } catch (error) {
         showAlert('error', error.message || String(error));
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Muat Draft';
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = initialText;
+        }
       }
     }
 
+    function handleLoadStoredDraft() {
+      const saved = getStoredDraftReference();
+      if (!saved.idPengajuan || !saved.resumeToken) return showAlert('error', 'Belum ada draft terakhir di browser ini. Buka Link Lanjutkan Draft jika memakai perangkat lain.');
+      return handleLoadDraft({ ...saved, buttonId: 'btn-load-stored-draft' });
+    }
+
     async function handleSubmitFinal() {
-      if (!currentDraftId || !currentResumeToken) return showAlert('error', 'Simpan atau muat draft terlebih dahulu sebelum Submit Final.');
+      if (!currentDraftId || !currentResumeToken) return showAlert('error', 'Simpan draft terlebih dahulu, lanjutkan Draft Terakhir, atau buka Link Lanjutkan Draft sebelum Submit Final.');
       if (!validateForm(true)) return;
       const btn = document.getElementById('btn-submit');
       btn.disabled = true;
@@ -398,31 +419,74 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    function initializeDraftResume() {
+      const fromUrl = getDraftReferenceFromUrl();
+      if (fromUrl.idPengajuan && fromUrl.resumeToken) {
+        handleLoadDraft({ ...fromUrl, fromUrl: true });
+        return;
+      }
+      restoreDraftReference();
+    }
+
     function setDraftReference(idPengajuan, resumeToken) {
       currentDraftId = idPengajuan || '';
       currentResumeToken = resumeToken || '';
       document.getElementById('resume-id').value = currentDraftId;
-      document.getElementById('resume-token').value = currentResumeToken;
+      const resumeUrl = currentDraftId && currentResumeToken ? buildResumeUrl(currentDraftId, currentResumeToken) : '';
+      const message = currentDraftId ? `Draft aktif: <strong class="font-mono">${escapeHtml(currentDraftId)}</strong>. Upload file signed lalu klik Submit Final. ${resumeUrl ? `<a class="font-semibold underline" href="${escapeAttr(resumeUrl)}">Link Lanjutkan Draft</a>` : ''}` : '';
       const status = document.getElementById('draft-status');
-      status.innerHTML = currentDraftId ? `Draft aktif: <strong class="font-mono">${escapeHtml(currentDraftId)}</strong>. Gunakan Kode Lanjutkan untuk submit final setelah file signed siap.` : '';
+      const printStatus = document.getElementById('print-resume-status');
+      status.innerHTML = message;
+      printStatus.innerHTML = message;
       status.classList.toggle('hidden', !currentDraftId);
-      try { localStorage.setItem(draftStorageKey, JSON.stringify({ idPengajuan: currentDraftId, resumeToken: currentResumeToken })); } catch (err) {}
+      printStatus.classList.toggle('hidden', !currentDraftId);
+      try { localStorage.setItem(draftStorageKey, JSON.stringify({ idPengajuan: currentDraftId, resumeToken: currentResumeToken, resumeUrl, savedAt: new Date().toISOString() })); } catch (err) {}
     }
 
     function clearDraftReference() {
       currentDraftId = '';
       currentResumeToken = '';
       document.getElementById('resume-id').value = '';
-      document.getElementById('resume-token').value = '';
       document.getElementById('draft-status').classList.add('hidden');
+      document.getElementById('draft-status').innerHTML = '';
+      document.getElementById('print-resume-status').classList.add('hidden');
+      document.getElementById('print-resume-status').innerHTML = '';
       try { localStorage.removeItem(draftStorageKey); } catch (err) {}
     }
 
     function restoreDraftReference() {
+      const saved = getStoredDraftReference();
+      if (saved.idPengajuan && saved.resumeToken) setDraftReference(saved.idPengajuan, saved.resumeToken);
+    }
+
+    function getStoredDraftReference() {
       try {
         const saved = JSON.parse(localStorage.getItem(draftStorageKey) || '{}');
-        if (saved.idPengajuan && saved.resumeToken) setDraftReference(saved.idPengajuan, saved.resumeToken);
-      } catch (err) {}
+        return { idPengajuan: saved.idPengajuan || '', resumeToken: saved.resumeToken || '' };
+      } catch (err) {
+        return { idPengajuan: '', resumeToken: '' };
+      }
+    }
+
+    function getDraftReferenceFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        idPengajuan: params.get('id') || params.get('idPengajuan') || '',
+        resumeToken: params.get('token') || params.get('resumeToken') || '',
+      };
+    }
+
+    function buildResumeUrl(idPengajuan, resumeToken) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('id', idPengajuan);
+      url.searchParams.set('token', resumeToken);
+      return url.toString();
+    }
+
+    function clearResumeParamsFromUrl() {
+      const url = new URL(window.location.href);
+      ['id', 'idPengajuan', 'token', 'resumeToken'].forEach(key => url.searchParams.delete(key));
+      window.history.replaceState({}, document.title, url.toString());
     }
 
     function updateFileInfo() {

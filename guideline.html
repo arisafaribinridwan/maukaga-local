@@ -170,8 +170,9 @@
           <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-blue-900">
             <li>Isi form lengkap tanpa upload file.</li>
             <li>Klik <strong>Simpan Draft & Cetak</strong>.</li>
-            <li>Pastikan sistem menampilkan ID Pengajuan dan Kode Lanjutkan.</li>
+            <li>Pastikan sistem menampilkan ID Pengajuan dan Link Lanjutkan Draft.</li>
             <li>Pastikan printout memuat ID Pengajuan.</li>
+            <li>Pastikan draft bisa dilanjutkan dari browser yang sama tanpa mengetik kode manual.</li>
             <li>Pastikan row di sheet <code>Pengajuan</code> berstatus <code>Menunggu Upload</code>.</li>
           </ol>
         </div>
@@ -179,8 +180,8 @@
           <h3 class="font-semibold text-blue-900">C. Lanjutkan Draft</h3>
           <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-blue-900">
             <li>Reload halaman form lokal.</li>
-            <li>Masukkan ID Pengajuan dan Kode Lanjutkan.</li>
-            <li>Klik <strong>Muat Draft</strong>.</li>
+            <li>Klik <strong>Draft Terakhir</strong> atau buka <strong>Link Lanjutkan Draft</strong>.</li>
+            <li>Jika memakai ID Pengajuan, klik <strong>Muat Draft</strong> dari browser yang sama.</li>
             <li>Pastikan semua field dan item produk terisi kembali.</li>
           </ol>
         </div>
@@ -200,7 +201,7 @@
     <section class="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
       <h2 class="text-xl font-bold">8. Verifikasi Edge Case</h2>
       <ul class="mt-4 list-disc space-y-2 pl-6 text-slate-700">
-        <li>Masukkan token salah: sistem harus menolak draft.</li>
+        <li>Buka Link Lanjutkan Draft dengan token salah: sistem harus menolak draft.</li>
         <li>Coba muat draft yang sudah final submit: sistem harus menolak.</li>
         <li>Simpan ulang draft setelah mengubah item: data item tidak boleh duplikat di sheet <code>PengajuanItems</code>.</li>
         <li>Upload file dengan format tidak valid: sistem harus menolak.</li>

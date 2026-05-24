@@ -89,6 +89,8 @@ function doPost(e) {
         return jsonResponse_(handleSaveDraftPengajuan(data));
       case 'getDraftPengajuan':
         return jsonResponse_(handleGetDraftPengajuan(data));
+      case 'checkDraftPengajuanStatus':
+        return jsonResponse_(handleCheckDraftPengajuanStatus(data));
       case 'submitDraftPengajuan':
         return jsonResponse_(handleSubmitDraftPengajuan(data));
       case 'adminLogin':
@@ -183,14 +185,14 @@ function handleSaveDraftPengajuan(data) {
     let draftCreatedAt = now;
 
     if (record) {
-      if (!requestedToken || clean_(record.row[record.col['Resume Token']]) !== requestedToken) throw new Error('Kode lanjutkan tidak valid');
+      if (!requestedToken || clean_(record.row[record.col['Resume Token']]) !== requestedToken) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
       if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat diubah');
       const oldHistory = record.row[record.col['Riwayat Singkat']] || '';
       history = oldHistory ? oldHistory + '\n[' + formatDateTime_(now) + '] Draft diperbarui' : '[' + formatDateTime_(now) + '] Draft diperbarui';
       draftCreatedAt = record.row[record.col['Draft Created At']] || now;
       updatePengajuanRow_(sheet, record.rowNumber, record.col, id, cleaned, DRAFT_STATUS, token, '', '', '', draftCreatedAt, now, '', history);
     } else {
-      if (requestedId || requestedToken) throw new Error('Draft tidak ditemukan atau kode lanjutkan tidak valid');
+      if (requestedId || requestedToken) throw new Error('Draft tidak ditemukan atau link lanjutkan tidak valid');
       id = generateIdUnlocked_();
       token = generateResumeToken_();
       appendPengajuanRow_(id, cleaned, DRAFT_STATUS, token, '', '', '', '', now, now, '', history);
@@ -206,11 +208,11 @@ function handleSaveDraftPengajuan(data) {
 function handleGetDraftPengajuan(data) {
   const id = clean_(data.idPengajuan);
   const token = clean_(data.resumeToken);
-  if (!id || !token) throw new Error('ID Pengajuan dan Kode Lanjutkan wajib diisi');
+  if (!id || !token) throw new Error('Buka draft dari Draft Terakhir atau Link Lanjutkan Draft');
 
   const record = findPengajuanRecord_(id);
   if (!record) throw new Error('Draft tidak ditemukan');
-  if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Kode lanjutkan tidak valid');
+  if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
   if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat dilanjutkan');
 
   const row = record.row;
@@ -231,19 +233,34 @@ function handleGetDraftPengajuan(data) {
   };
 }
 
+function handleCheckDraftPengajuanStatus(data) {
+  const id = clean_(data.idPengajuan);
+  if (!id) throw new Error('Masukkan ID Pengajuan terlebih dahulu.');
+
+  const record = findPengajuanRecord_(id);
+  if (!record) throw new Error('ID Pengajuan tidak ditemukan. Periksa kembali ID pada printout draft.');
+
+  const status = record.row[record.col['Status']];
+  if (status !== DRAFT_STATUS) {
+    throw new Error('ID Pengajuan ini sudah dikirim final dan tidak bisa dibuka sebagai draft. Jika ingin melihat statusnya, cek dashboard admin.');
+  }
+
+  return { success: true, data: { idPengajuan: id, status: status } };
+}
+
 function handleSubmitDraftPengajuan(data) {
   const config = getConfig();
   const cleaned = normalizeSubmission_(data, config, true);
   const id = clean_(data.idPengajuan);
   const token = clean_(data.resumeToken);
-  if (!id || !token) throw new Error('ID Pengajuan dan Kode Lanjutkan wajib diisi');
+  if (!id || !token) throw new Error('Buka draft dari Draft Terakhir atau Link Lanjutkan Draft');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
     const record = findPengajuanRecord_(id);
     if (!record) throw new Error('Draft tidak ditemukan');
-    if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Kode lanjutkan tidak valid');
+    if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
     if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat dilanjutkan');
 
     const folderId = String(config.DRIVE_FOLDER_ID || APP.DRIVE_FOLDER_ID || '').trim();

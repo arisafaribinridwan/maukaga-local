@@ -288,7 +288,9 @@
     function resetDraftSectionErrors() {
       const box = document.getElementById('alert-box');
       if (box.dataset.type === 'error') hideAlert();
-      document.getElementById('resume-id').classList.remove('field-error');
+      const resumeInput = document.getElementById('resume-id');
+      resumeInput.value = '';
+      resumeInput.classList.remove('field-error');
       const draftStatus = document.getElementById('draft-status');
       draftStatus.classList.add('hidden');
       draftStatus.textContent = '';

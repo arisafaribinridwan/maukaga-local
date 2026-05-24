@@ -467,7 +467,6 @@
 
     function buildPrintHtml(idPengajuan) {
       const data = collectPayload();
-      const printedAt = new Date().toLocaleString('id-ID');
       const metadataRows = [
         ['ID Pengajuan', idPengajuan || '-'], ['Nama', data.nama], ['Bagian/Cabang', data.bagianCabang], ['Pemilik', data.pemilik], ['Tanggal Form', formatDate(data.tanggalForm)], ['Alasan Pengajuan', data.alasanPengajuan], ['Catatan Tambahan', data.catatanTambahan || '-'],
       ];
@@ -476,9 +475,7 @@
       }
       return `
         <div class="border-b border-slate-300 pb-4 text-center">
-          <h1 class="text-xl font-bold">${escapeHtml(CONFIG.APP_NAME || 'Pengajuan Kartu Garansi')}</h1>
-          <p class="mt-1 font-mono text-sm font-bold">ID Pengajuan: ${escapeHtml(idPengajuan || '-')}</p>
-          <p class="mt-1 text-xs text-slate-600">Tanggal Cetak: ${escapeHtml(printedAt)}</p>
+          <h1 class="text-xl font-bold">Form Permintaan Kartu Garansi</h1>
         </div>
         <table class="mt-5 w-full border-collapse text-sm">${metadataRows.map(([label, value]) => `<tr><th class="w-1/3 border border-slate-400 bg-slate-100 p-2 text-left">${escapeHtml(label)}</th><td class="border border-slate-400 p-2">${escapeHtml(value)}</td></tr>`).join('')}</table>
         ${data.items.length > 1 ? `<h2 class="mt-6 font-bold">Daftar Item</h2><table class="mt-2 w-full border-collapse text-sm"><thead><tr><th class="border border-slate-400 bg-slate-100 p-2">No</th><th class="border border-slate-400 bg-slate-100 p-2">Produk</th><th class="border border-slate-400 bg-slate-100 p-2">Model</th><th class="border border-slate-400 bg-slate-100 p-2">Nomor Seri</th></tr></thead><tbody>${data.items.map((item, index) => `<tr><td class="border border-slate-400 p-2 text-center">${index + 1}</td><td class="border border-slate-400 p-2">${escapeHtml(item.produk)}</td><td class="border border-slate-400 p-2">${escapeHtml(item.model)}</td><td class="border border-slate-400 p-2">${escapeHtml(item.nomorSeri)}</td></tr>`).join('')}</tbody></table>` : ''}

@@ -25,7 +25,10 @@
         <h1 id="app-title" class="text-2xl font-bold sm:text-3xl mb-2">Mau KaGa</h1>
         <p class="text-sm font-semibold uppercase tracking-wide text-blue-500">Form Permintaan Kartu Garansi</p>
       </div>
-      <button id="btn-toggle-draft" type="button" onclick="toggleDraftSection()" aria-expanded="false" aria-controls="section-draft-resume" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Lanjutkan Draft</button>
+      <button id="btn-toggle-draft" type="button" onclick="toggleDraftSection()" aria-expanded="false" aria-controls="section-draft-resume" class="inline-flex items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg>
+        <span>Lanjutkan Draft</span>
+      </button>
     </header>
 
     <div id="alert-box" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
@@ -81,8 +84,14 @@
       </section>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <button id="btn-save-draft" type="button" onclick="handleSaveDraftAndPrint()" class="rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 hover:bg-slate-50">Simpan Draft & Cetak</button>
-        <button id="btn-submit" type="button" onclick="handleSubmitFinal()" class="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Submit Final</button>
+        <button id="btn-save-draft" type="button" onclick="handleSaveDraftAndPrint()" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 hover:bg-slate-50">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>
+          <span>Simpan Draft & Cetak</span>
+        </button>
+        <button id="btn-submit" type="button" onclick="handleSubmitFinal()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
+          <span>Submit Final</span>
+        </button>
       </div>
     </form>
   </main>
@@ -249,7 +258,7 @@
       const isOpening = section.classList.contains('hidden');
       section.classList.toggle('hidden', !isOpening);
       button.setAttribute('aria-expanded', String(isOpening));
-      button.textContent = isOpening ? 'Tutup Lanjutkan Draft' : 'Lanjutkan Draft';
+      button.querySelector('span').textContent = isOpening ? 'Tutup Lanjutkan Draft' : 'Lanjutkan Draft';
       if (isOpening) document.getElementById('resume-id').focus();
     }
 
@@ -257,7 +266,7 @@
       if (!validateForm(false)) return;
       const btn = document.getElementById('btn-save-draft');
       btn.disabled = true;
-      btn.textContent = 'Menyimpan...';
+      btn.querySelector('span').textContent = 'Menyimpan...';
       showAlert('loading', 'Menyimpan draft sebelum cetak...');
       try {
         const payload = collectPayload();
@@ -279,7 +288,7 @@
         showAlert('error', error.message || String(error));
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Simpan Draft & Cetak';
+        btn.querySelector('span').textContent = 'Simpan Draft & Cetak';
       }
     }
 
@@ -329,7 +338,7 @@
       if (!validateForm(true)) return;
       const btn = document.getElementById('btn-submit');
       btn.disabled = true;
-      btn.textContent = 'Mengirim...';
+      btn.querySelector('span').textContent = 'Mengirim...';
       showAlert('loading', 'Mengirim pengajuan final...');
       try {
         const file = document.getElementById('fileUpload').files[0];
@@ -347,7 +356,7 @@
         showAlert('error', error.message || String(error));
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Submit Final';
+        btn.querySelector('span').textContent = 'Submit Final';
       }
     }
 

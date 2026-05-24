@@ -22,15 +22,15 @@
   <main id="section-form" class="mx-auto max-w-5xl px-4 py-6 sm:py-10">
     <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-blue-700">Form Pengajuan</p>
-        <h1 id="app-title" class="text-2xl font-bold sm:text-3xl">Pengajuan Kartu Garansi</h1>
+        <h1 id="app-title" class="text-2xl font-bold sm:text-3xl mb-2">Mau KaGa</h1>
+        <p class="text-sm font-semibold uppercase tracking-wide text-blue-500">Form Permintaan Kartu Garansi</p>
       </div>
-      <a href="dashboard.html" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Dashboard Admin →</a>
+      <button id="btn-toggle-draft" type="button" onclick="toggleDraftSection()" aria-expanded="false" aria-controls="section-draft-resume" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Lanjutkan Draft</button>
     </header>
 
     <div id="alert-box" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
 
-    <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <section id="section-draft-resume" class="mb-6 hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div class="mb-4 flex flex-col gap-1">
         <h2 class="text-lg font-semibold">Lanjutkan Draft</h2>
         <p class="text-sm text-slate-600">Lanjutkan draft terakhir dari browser ini, atau buka link lanjutkan dari saat draft disimpan.</p>
@@ -45,29 +45,39 @@
 
     <form id="pengajuan-form" class="space-y-6" novalidate>
       <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h2 class="mb-4 text-lg font-semibold">Data Pengaju</h2>
+        <h2 class="mb-4 text-lg font-semibold">Data Pengajuan</h2>
         <div class="grid gap-4 sm:grid-cols-2">
-          <label class="block text-sm font-medium">Nama <span class="text-red-600">*</span><input id="nama" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
-          <label class="block text-sm font-medium">Bagian/Cabang <span class="text-red-600">*</span><input id="bagianCabang" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
-          <label class="block text-sm font-medium">Pemilik <span class="text-red-600">*</span><input id="pemilik" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
-          <label class="block text-sm font-medium">Tanggal Form <span class="text-red-600">*</span><input id="tanggalForm" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="date" required></label>
-          <label class="block text-sm font-medium sm:col-span-2">Alasan Pengajuan Kartu Garansi Baru <span class="text-red-600">*</span><textarea id="alasanPengajuan" class="mt-1 min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2" required></textarea></label>
-          <label class="block text-sm font-medium sm:col-span-2">Catatan Tambahan<textarea id="catatanTambahan" class="mt-1 min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2"></textarea></label>
+          <label class="block text-sm font-medium">Nama <span class="text-red-600">*</span><input id="nama" class="bg-slate-50 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
+          <label class="block text-sm font-medium">Bagian/Cabang <span class="text-red-600">*</span><input id="bagianCabang" class="bg-slate-50 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
+          <label class="block text-sm font-medium">Pemilik <span class="text-red-600">*</span><input id="pemilik" class="bg-slate-50 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text" required></label>
+          <label class="block text-sm font-medium">Tanggal Form <span class="text-red-600">*</span><input id="tanggalForm" class="bg-slate-50 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="date" required></label>
+          <label class="block text-sm font-medium">Alasan Pengajuan Kartu Garansi Baru <span class="text-red-600">*</span><textarea id="alasanPengajuan" class="bg-slate-50 mt-1 min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2" required></textarea></label>
+          <label class="block text-sm font-medium">Catatan Tambahan<textarea id="catatanTambahan" class="bg-slate-50 mt-1 min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2"></textarea></label>
         </div>
       </section>
 
       <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <div class="mb-4 flex items-center justify-between gap-4">
-          <h2 class="text-lg font-semibold">Daftar Item Produk</h2>
-          <button id="btn-add-item" type="button" class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700" onclick="addItem()">+ Tambah Item</button>
+        <div class="mb-4 flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <h2 class="text-lg font-semibold text-slate-900">Daftar Item Produk</h2>
+          <button id="btn-add-item" type="button" class="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-100" onclick="addItem()"><span class="text-lg leading-none">+</span> Tambah Item</button>
         </div>
-        <div id="item-list" class="space-y-4"></div>
+        <div id="item-list"></div>
       </section>
 
       <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h2 class="mb-4 text-lg font-semibold">Upload File Hard Copy Bertanda Tangan</h2>
-        <input id="fileUpload" class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
-        <p id="file-info" class="mt-2 text-sm text-slate-600">Belum ada file dipilih. File wajib saat submit final, tidak wajib saat simpan draft/cetak.</p>
+        <h2 class="mb-4 text-lg font-semibold text-slate-900">Upload File Hard Copy Bertanda Tangan</h2>
+        <div class="flex flex-col gap-4 rounded-lg border-2 border-dashed border-blue-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M17 8l-5-5-5 5"></path><path d="M12 3v12"></path></svg>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-900">Pilih file untuk diunggah</p>
+              <p id="file-info" class="mt-1 text-xs text-slate-500">Belum ada file dipilih. Wajib saat submit final.</p>
+            </div>
+          </div>
+          <input id="fileUpload" class="w-full text-sm text-slate-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100 sm:w-auto" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+        </div>
       </section>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -117,19 +127,34 @@
 
     function renderItems() {
       const list = document.getElementById('item-list');
-      list.innerHTML = items.map((item, index) => `
-        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4" data-item-card="${index}">
-          <div class="mb-3 flex items-center justify-between">
-            <h3 class="font-semibold">Item #${index + 1}</h3>
-            ${items.length > 1 ? `<button type="button" class="text-sm font-semibold text-red-600 hover:text-red-700" onclick="removeItem(${index})">Hapus Item</button>` : ''}
-          </div>
-          <div class="grid gap-3 sm:grid-cols-3">
-            <label class="text-sm font-medium">Produk <span class="text-red-600">*</span><input data-item-field="produk" data-index="${index}" value="${escapeAttr(item.produk)}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text"></label>
-            <label class="text-sm font-medium">Model <span class="text-red-600">*</span><input data-item-field="model" data-index="${index}" value="${escapeAttr(item.model)}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text"></label>
-            <label class="text-sm font-medium">Nomor Seri <span class="text-red-600">*</span><input data-item-field="nomorSeri" data-index="${index}" value="${escapeAttr(item.nomorSeri)}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="text"></label>
+      list.innerHTML = `
+        <div class="overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div class="min-w-[920px]">
+            <div class="grid grid-cols-[36px_1fr_1fr_1fr_36px] gap-3 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div class="text-center">#</div>
+              <div>Produk <span class="text-red-500">*</span></div>
+              <div>Model <span class="text-red-500">*</span></div>
+              <div>Nomor Seri <span class="text-red-500">*</span></div>
+              <div></div>
+            </div>
+            <div class="space-y-2">
+              ${items.map((item, index) => `
+                <div class="grid grid-cols-[36px_1fr_1fr_1fr_36px] items-center gap-3 rounded-md border border-slate-200 bg-white p-3 shadow-sm" data-item-card="${index}">
+                  <div class="flex justify-center">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-600">${index + 1}</span>
+                  </div>
+                  <input data-item-field="produk" data-index="${index}" value="${escapeAttr(item.produk)}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400" type="text" placeholder="Nama Produk">
+                  <input data-item-field="model" data-index="${index}" value="${escapeAttr(item.model)}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400" type="text" placeholder="Tipe/Model">
+                  <input data-item-field="nomorSeri" data-index="${index}" value="${escapeAttr(item.nomorSeri)}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400" type="text" placeholder="S/N">
+                  <button type="button" class="flex h-8 w-8 items-center justify-center rounded text-red-500 hover:bg-red-50 hover:text-red-600" onclick="removeItem(${index})" aria-label="Hapus item ${index + 1}">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
-      `).join('');
+      `;
       document.querySelectorAll('[data-item-field]').forEach(input => {
         input.addEventListener('input', event => {
           const index = Number(event.target.dataset.index);
@@ -216,6 +241,16 @@
         el.addEventListener('input', refreshValidationErrors);
         el.addEventListener('change', refreshValidationErrors);
       });
+    }
+
+    function toggleDraftSection() {
+      const section = document.getElementById('section-draft-resume');
+      const button = document.getElementById('btn-toggle-draft');
+      const isOpening = section.classList.contains('hidden');
+      section.classList.toggle('hidden', !isOpening);
+      button.setAttribute('aria-expanded', String(isOpening));
+      button.textContent = isOpening ? 'Tutup Lanjutkan Draft' : 'Lanjutkan Draft';
+      if (isOpening) document.getElementById('resume-id').focus();
     }
 
     async function handleSaveDraftAndPrint() {
@@ -351,7 +386,7 @@
       items = [{ produk: '', model: '', nomorSeri: '' }];
       renderItems();
       clearDraftReference();
-      document.getElementById('file-info').textContent = 'Belum ada file dipilih. File wajib saat submit final, tidak wajib saat simpan draft/cetak.';
+      document.getElementById('file-info').textContent = 'Belum ada file dipilih. Wajib saat submit final.';
       hideAlert();
       document.getElementById('section-success').classList.add('hidden');
       document.getElementById('section-print').style.display = 'none';
@@ -494,14 +529,14 @@
       const info = document.getElementById('file-info');
       document.getElementById('fileUpload').classList.remove('field-error');
       if (!file) {
-        info.textContent = 'Belum ada file dipilih. File wajib saat submit final, tidak wajib saat simpan draft/cetak.';
-        info.className = 'mt-2 text-sm text-slate-600';
+        info.textContent = 'Belum ada file dipilih. Wajib saat submit final.';
+        info.className = 'mt-1 text-xs text-slate-500';
         refreshValidationErrors();
         return;
       }
       const error = validateFile(file);
       info.textContent = `${file.name} (${formatBytes(file.size)})${error ? ' — ' + error : ''}`;
-      info.className = `mt-2 text-sm ${error ? 'text-red-700' : 'text-slate-600'}`;
+      info.className = `mt-1 text-xs ${error ? 'text-red-700' : 'text-slate-500'}`;
       refreshValidationErrors();
     }
 

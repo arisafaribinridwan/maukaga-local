@@ -242,7 +242,7 @@ function handleCheckDraftPengajuanStatus(data) {
 
   const status = record.row[record.col['Status']];
   if (status !== DRAFT_STATUS) {
-    throw new Error('ID Pengajuan ini sudah dikirim final dan tidak bisa dibuka sebagai draft. Jika ingin melihat statusnya, cek dashboard admin.');
+    throw new Error('ID Pengajuan ini sudah dikirim final dan tidak bisa dibuka sebagai draft.');
   }
 
   return { success: true, data: { idPengajuan: id, status: status } };

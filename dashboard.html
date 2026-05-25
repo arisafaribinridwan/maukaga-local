@@ -18,9 +18,11 @@
       .warranty-print-page{page-break-after:always;break-after:page}
       .warranty-print-page:last-child{page-break-after:auto;break-after:auto}
     }
-    .warranty-print-page{position:relative;width:210mm;height:297mm;background:#fff;color:#000}
-    .warranty-field{position:absolute;transform:translate(var(--warranty-offset-x,0mm),var(--warranty-offset-y,0mm));overflow:hidden;white-space:nowrap;text-align:center;font-family:Arial,sans-serif;color:#000}
-    .warranty-detail-field{transform:translate(var(--warranty-offset-x,0mm),calc(var(--warranty-offset-y,0mm) + var(--warranty-detail-offset-y,0mm)))}
+    .warranty-print-page{position:relative;width:210mm;height:297mm;background:#fff;color:#000;--warranty-adjust-x:0mm;--warranty-adjust-y:0mm;--warranty-detail-adjust-y:0mm}
+    .warranty-print-page.local{--warranty-base-x:5mm;--warranty-base-y:-5mm;--warranty-detail-base-y:-2mm}
+    .warranty-print-page.import{--warranty-base-x:0mm;--warranty-base-y:3mm;--warranty-detail-base-y:0mm}
+    .warranty-field{position:absolute;transform:translate(calc(var(--warranty-base-x,0mm) + var(--warranty-adjust-x,0mm)),calc(var(--warranty-base-y,0mm) + var(--warranty-adjust-y,0mm)));overflow:hidden;white-space:nowrap;text-align:center;font-family:Arial,sans-serif;color:#000}
+    .warranty-detail-field{transform:translate(calc(var(--warranty-base-x,0mm) + var(--warranty-adjust-x,0mm)),calc(var(--warranty-base-y,0mm) + var(--warranty-adjust-y,0mm) + var(--warranty-detail-base-y,0mm) + var(--warranty-detail-adjust-y,0mm)))}
     .warranty-product{left:0mm;top:218.3mm;width:124.6mm;height:6.4mm;font-size:14pt;line-height:6.4mm}
     .warranty-model{left:0mm;top:236.3mm;width:61.1mm;height:5.3mm;font-size:10pt;line-height:5.3mm}
     .warranty-serial{left:73.3mm;top:236.3mm;width:51.3mm;height:5.3mm;font-size:10pt;line-height:5.3mm}
@@ -77,10 +79,10 @@
         <div class="grid gap-3 lg:grid-cols-8">
           <input id="print-search" class="rounded-lg border border-slate-300 px-3 py-2 lg:col-span-2" placeholder="Cari ID, cabang, model, serial...">
           <select id="print-filter-card-type" class="rounded-lg border border-slate-300 px-3 py-2"><option value="">Semua Jenis</option><option value="local">Local</option><option value="import">Import</option><option value="unset">Belum Dipilih</option></select>
-          <label class="text-sm font-medium">Offset Local X (mm)<input id="offset-local-x" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="5"></label>
-          <label class="text-sm font-medium">Offset Local Y (mm)<input id="offset-local-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="-5"></label>
-          <label class="text-sm font-medium">Detail Local Y (mm)<input id="offset-local-detail-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="-2"></label>
-          <label class="text-sm font-medium">Offset Import Y (mm)<input id="offset-import-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="3"></label>
+          <label class="text-sm font-medium">Offset Local X (mm)<input id="offset-local-x" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="0"></label>
+          <label class="text-sm font-medium">Offset Local Y (mm)<input id="offset-local-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="0"></label>
+          <label class="text-sm font-medium">Detail Local Y (mm)<input id="offset-local-detail-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="0"></label>
+          <label class="text-sm font-medium">Offset Import Y (mm)<input id="offset-import-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.5" value="0"></label>
           <button onclick="loadWarrantyPrintQueue()" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Refresh</button>
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
@@ -334,30 +336,32 @@
 
     function renderWarrantyPrintContent(rows) {
       document.getElementById('warranty-print-content').innerHTML = rows.map(row => {
-        const offsetY = getWarrantyOffsetY(row.jenisKartuKey);
-        const offsetX = getWarrantyOffsetX(row.jenisKartuKey);
-        const detailOffsetY = getWarrantyDetailOffsetY(row.jenisKartuKey);
-        return `<div class="warranty-print-page" style="--warranty-offset-x:${escapeAttr(offsetX)}mm;--warranty-offset-y:${escapeAttr(offsetY)}mm;--warranty-detail-offset-y:${escapeAttr(detailOffsetY)}mm"><div class="warranty-field warranty-product">${escapeHtml(row.produk)}</div><div class="warranty-field warranty-detail-field warranty-model">${escapeHtml(row.model)}</div><div class="warranty-field warranty-detail-field warranty-serial">${escapeHtml(row.nomorSeri)}</div></div>`;
+        const cardType = row.jenisKartuKey === 'import' ? 'import' : 'local';
+        const adjustY = getWarrantyAdjustY(cardType);
+        const adjustX = getWarrantyAdjustX(cardType);
+        const detailAdjustY = getWarrantyDetailAdjustY(cardType);
+        return `<div class="warranty-print-page ${escapeAttr(cardType)}" style="--warranty-adjust-x:${escapeAttr(adjustX)}mm;--warranty-adjust-y:${escapeAttr(adjustY)}mm;--warranty-detail-adjust-y:${escapeAttr(detailAdjustY)}mm"><div class="warranty-field warranty-product">${escapeHtml(row.produk)}</div><div class="warranty-field warranty-detail-field warranty-model">${escapeHtml(row.model)}</div><div class="warranty-field warranty-detail-field warranty-serial">${escapeHtml(row.nomorSeri)}</div></div>`;
       }).join('');
     }
 
-    function getWarrantyOffsetX(jenisKartu) {
+    function getWarrantyAdjustX(jenisKartu) {
       if (jenisKartu === 'import') return 0;
-      const value = Number(document.getElementById('offset-local-x').value);
-      return Number.isFinite(value) ? value : 5;
+      return getNumericInputValue('offset-local-x', 0);
     }
 
-    function getWarrantyOffsetY(jenisKartu) {
-      const id = jenisKartu === 'import' ? 'offset-import-y' : 'offset-local-y';
-      const fallback = jenisKartu === 'import' ? 3 : -5;
+    function getWarrantyAdjustY(jenisKartu) {
+      const inputId = jenisKartu === 'import' ? 'offset-import-y' : 'offset-local-y';
+      return getNumericInputValue(inputId, 0);
+    }
+
+    function getWarrantyDetailAdjustY(jenisKartu) {
+      if (jenisKartu !== 'local') return 0;
+      return getNumericInputValue('offset-local-detail-y', 0);
+    }
+
+    function getNumericInputValue(id, fallback) {
       const value = Number(document.getElementById(id).value);
       return Number.isFinite(value) ? value : fallback;
-    }
-
-    function getWarrantyDetailOffsetY(jenisKartu) {
-      if (jenisKartu !== 'local') return 0;
-      const value = Number(document.getElementById('offset-local-detail-y').value);
-      return Number.isFinite(value) ? value : -2;
     }
 
     function getSelectedPrintRows() {

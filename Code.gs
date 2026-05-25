@@ -21,7 +21,7 @@ const SHEETS = {
 };
 
 const HEADERS = {
-  [SHEETS.PENGAJUAN]: ['ID Pengajuan', 'Timestamp Submit', 'Nama', 'Bagian/Cabang', 'Pemilik', 'Alasan Pengajuan', 'Tanggal Form', 'File Hard Copy URL', 'File Hard Copy ID', 'Catatan Tambahan', 'Jumlah Item', 'Status', 'Catatan Admin', 'Tanggal Update Status Terakhir', 'User Update Status', 'Riwayat Singkat', 'Resume Token', 'Draft Created At', 'Draft Updated At', 'Submitted At'],
+  [SHEETS.PENGAJUAN]: ['ID Pengajuan', 'Timestamp Submit', 'Nama', 'Bagian/Cabang', 'Pemilik', 'Alasan Pengajuan', 'Tanggal Form', 'File Hard Copy URL', 'File Hard Copy ID', 'Catatan Tambahan', 'Jumlah Item', 'Status', 'Catatan Admin', 'Tanggal Update Status Terakhir', 'User Update Status', 'Riwayat Singkat', 'Resume Token', 'Draft Created At', 'Draft Updated At', 'Submitted At', 'Nama Pengupload'],
   [SHEETS.ITEMS]: ['ID Pengajuan', 'No Item', 'Produk', 'Model', 'Nomor Seri'],
   [SHEETS.USERS]: ['Username', 'Password/PIN', 'Nama', 'Role', 'Aktif', 'Last Login'],
   [SHEETS.RECIPIENTS]: ['Nama', 'Email', 'Aktif', 'Keterangan'],
@@ -216,8 +216,9 @@ function handleSaveDraftPengajuan(data) {
     let draftCreatedAt = now;
 
     if (record) {
-      if (!requestedToken || clean_(record.row[record.col['Resume Token']]) !== requestedToken) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
+      if (requestedToken && clean_(record.row[record.col['Resume Token']]) !== requestedToken) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
       if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat diubah');
+      if (!token) token = clean_(record.row[record.col['Resume Token']]);
       const oldHistory = record.row[record.col['Riwayat Singkat']] || '';
       history = oldHistory ? oldHistory + '\n[' + formatDateTime_(now) + '] Draft diperbarui' : '[' + formatDateTime_(now) + '] Draft diperbarui';
       draftCreatedAt = record.row[record.col['Draft Created At']] || now;
@@ -239,11 +240,11 @@ function handleSaveDraftPengajuan(data) {
 function handleGetDraftPengajuan(data) {
   const id = clean_(data.idPengajuan);
   const token = clean_(data.resumeToken);
-  if (!id || !token) throw new Error('Buka draft dari Draft Terakhir atau Link Lanjutkan Draft');
+  if (!id) throw new Error('Masukkan ID Pengajuan terlebih dahulu.');
 
   const record = findPengajuanRecord_(id);
   if (!record) throw new Error('Draft tidak ditemukan');
-  if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
+  if (token && clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
   if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat dilanjutkan');
 
   const row = record.row;
@@ -284,14 +285,14 @@ function handleSubmitDraftPengajuan(data) {
   const cleaned = normalizeSubmission_(data, config, true);
   const id = clean_(data.idPengajuan);
   const token = clean_(data.resumeToken);
-  if (!id || !token) throw new Error('Buka draft dari Draft Terakhir atau Link Lanjutkan Draft');
+  if (!id) throw new Error('Masukkan ID Pengajuan terlebih dahulu.');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
     const record = findPengajuanRecord_(id);
     if (!record) throw new Error('Draft tidak ditemukan');
-    if (clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
+    if (token && clean_(record.row[record.col['Resume Token']]) !== token) throw new Error('Link lanjutkan tidak valid atau draft tidak ditemukan');
     if (record.row[record.col['Status']] !== DRAFT_STATUS) throw new Error('Draft sudah tidak dapat dilanjutkan');
 
     const folderId = String(config.DRIVE_FOLDER_ID || APP.DRIVE_FOLDER_ID || '').trim();
@@ -304,10 +305,11 @@ function handleSubmitDraftPengajuan(data) {
 
     const now = new Date();
     const oldHistory = record.row[record.col['Riwayat Singkat']] || '';
-    const history = oldHistory ? oldHistory + '\n[' + formatDateTime_(now) + '] Pengajuan final dikirim' : '[' + formatDateTime_(now) + '] Pengajuan final dikirim';
+    const uploadNameText = cleaned.namaPengupload ? ' oleh ' + cleaned.namaPengupload : '';
+    const history = oldHistory ? oldHistory + '\n[' + formatDateTime_(now) + '] Pengajuan final dikirim' + uploadNameText : '[' + formatDateTime_(now) + '] Pengajuan final dikirim' + uploadNameText;
     updatePengajuanRow_(record.sheet, record.rowNumber, record.col, id, cleaned, 'Baru', '', now, file.getUrl(), file.getId(), record.row[record.col['Draft Created At']] || '', record.row[record.col['Draft Updated At']] || '', now, history);
     replaceItemRows_(id, cleaned.items);
-    getSheet_(SHEETS.STATUS_LOG).appendRow([now, id, DRAFT_STATUS, 'Baru', 'Final submit hard copy signed', 'system']);
+    getSheet_(SHEETS.STATUS_LOG).appendRow([now, id, DRAFT_STATUS, 'Baru', cleaned.namaPengupload ? 'Final submit hard copy signed oleh ' + cleaned.namaPengupload : 'Final submit hard copy signed', 'system']);
 
     return { success: true, data: { idPengajuan: id } };
   } finally {
@@ -428,6 +430,7 @@ function handleGetDetail(data) {
       fileHardCopyUrl: pengajuan['File Hard Copy URL'],
       fileHardCopyId: pengajuan['File Hard Copy ID'],
       catatanTambahan: pengajuan['Catatan Tambahan'],
+      namaPengupload: pengajuan['Nama Pengupload'],
       jumlahItem: pengajuan['Jumlah Item'],
       status: pengajuan['Status'],
       catatanAdmin: pengajuan['Catatan Admin'],
@@ -841,6 +844,7 @@ function normalizeSubmission_(data, config, includeFile) {
     tanggalForm: clean_(data.tanggalForm),
     alasanPengajuan: clean_(data.alasanPengajuan),
     catatanTambahan: clean_(data.catatanTambahan),
+    namaPengupload: clean_(data.namaPengupload),
     items: Array.isArray(data.items) ? data.items : [],
     fileBase64: clean_(data.fileBase64),
     fileExtension: clean_(data.fileExtension).toLowerCase().replace(/^\./, ''),
@@ -866,6 +870,7 @@ function normalizeSubmission_(data, config, includeFile) {
   });
 
   if (includeFile) {
+    if (!cleaned.namaPengupload) throw new Error('Nama pengupload wajib diisi');
     if (!cleaned.fileBase64) throw new Error('File hard copy wajib dilampirkan');
     if (VALID_EXTENSIONS.indexOf(cleaned.fileExtension) === -1) throw new Error('Format file tidak valid');
     if (VALID_MIME_TYPES.indexOf(cleaned.fileMimeType) === -1) throw new Error('MIME type file tidak valid');
@@ -898,6 +903,7 @@ function appendPengajuanRow_(id, cleaned, status, resumeToken, timestampSubmit, 
     draftCreatedAt,
     draftUpdatedAt,
     submittedAt,
+    cleaned.namaPengupload || '',
   ]);
 }
 
@@ -923,6 +929,7 @@ function updatePengajuanRow_(sheet, rowNumber, col, id, cleaned, status, resumeT
   row[col['Draft Created At']] = draftCreatedAt;
   row[col['Draft Updated At']] = draftUpdatedAt;
   row[col['Submitted At']] = submittedAt;
+  if (col['Nama Pengupload'] != null) row[col['Nama Pengupload']] = cleaned.namaPengupload || '';
   sheet.getRange(rowNumber, 1, 1, row.length).setValues([row]);
 }
 

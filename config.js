@@ -1,7 +1,7 @@
 const CONFIG = {
   // Ganti dengan URL deployment Google Apps Script kamu
   // kita ganti untuk url testing, jangan diubah untuk production
-  API_URL: 'https://script.google.com/macros/s/AKfycbxsjh7uMrhBI83aPiaB12JMFS1g_adrqi3H44piGrnRGQ6NlIBGERJ837TCpqLyPg1amA/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxAikXauXo-Ct_FfawqXjrdMxa3K-cK6eyBZFuG74IlrVNW2bE2vwX4BLsEo-CS7AwIyA/exec',
   APP_NAME: 'Mau KaGa',
   MAX_UPLOAD_MB: 10,
   MAX_ITEMS: 10,

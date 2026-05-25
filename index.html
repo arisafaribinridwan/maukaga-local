@@ -501,9 +501,7 @@
       const fromUrl = getDraftReferenceFromUrl();
       if (fromUrl.idPengajuan && fromUrl.resumeToken) {
         handleLoadDraft({ ...fromUrl, fromUrl: true });
-        return;
       }
-      restoreDraftReference();
     }
 
     function setDraftReference(idPengajuan, resumeToken) {
@@ -530,11 +528,6 @@
       document.getElementById('print-resume-status').classList.add('hidden');
       document.getElementById('print-resume-status').innerHTML = '';
       try { localStorage.removeItem(draftStorageKey); } catch (err) {}
-    }
-
-    function restoreDraftReference() {
-      const saved = getStoredDraftReference();
-      if (saved.idPengajuan && saved.resumeToken) setDraftReference(saved.idPengajuan, saved.resumeToken);
     }
 
     function getStoredDraftReference() {

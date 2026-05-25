@@ -17,6 +17,7 @@ const SHEETS = {
   EMAIL_LOG: 'EmailLog',
   WARRANTY_CARDS: 'WarrantyCards',
   PRINT_BATCH: 'PrintBatch',
+  PRINT_LAYOUTS: 'PrintLayouts',
 };
 
 const HEADERS = {
@@ -29,8 +30,17 @@ const HEADERS = {
   [SHEETS.EMAIL_LOG]: ['Timestamp', 'Subject', 'Recipients', 'Jumlah Pengajuan', 'Status'],
   [SHEETS.WARRANTY_CARDS]: ['ID Pengajuan', 'No Item', 'Produk', 'Model', 'Nomor Seri', 'Jenis Kartu', 'Status Cetak', 'Print Batch ID', 'Printed At', 'Printed By', 'Reprint Count', 'Last Reprint At', 'Last Reprint By', 'Catatan'],
   [SHEETS.PRINT_BATCH]: ['Batch ID', 'Tipe Batch', 'Created At', 'Created By', 'Jumlah Item', 'Catatan'],
+  [SHEETS.PRINT_LAYOUTS]: ['ID', 'Type', 'Name', 'Offset X', 'Offset Y', 'Gap Product Model', 'Gap Model Serial', 'Is Builtin', 'Created At', 'Updated At', 'Updated By'],
 };
 
+const DEFAULT_PRINT_LAYOUTS = [
+  { id: 'local-default', type: 'local', name: 'Local Default', offsetX: 0, offsetY: 0, gapProductModel: 0, gapModelSerial: 0, isBuiltin: true },
+  { id: 'import-default', type: 'import', name: 'Import Default', offsetX: 0, offsetY: 0, gapProductModel: 0, gapModelSerial: 0, isBuiltin: true },
+];
+const ACTIVE_PRINT_LAYOUT_KEYS = {
+  local: 'ACTIVE_PRINT_LAYOUT_LOCAL',
+  import: 'ACTIVE_PRINT_LAYOUT_IMPORT',
+};
 const DRAFT_STATUS = 'Menunggu Upload';
 const VALID_STATUSES = ['Baru', 'Disetujui', 'Ditolak', 'Selesai'];
 const VALID_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
@@ -54,10 +64,13 @@ function setupApp() {
     MAX_UPLOAD_MB: APP.MAX_UPLOAD_MB,
     MAX_ITEMS: APP.MAX_ITEMS,
     LAST_EMAIL_SENT_AT: '',
+    ACTIVE_PRINT_LAYOUT_LOCAL: 'local-default',
+    ACTIVE_PRINT_LAYOUT_IMPORT: 'import-default',
   };
   Object.keys(defaults).forEach(function (key) {
     upsertConfig_(configSheet, key, defaults[key], false);
   });
+  ensurePrintLayoutDefaults_(configSheet);
 
   const config = getConfig();
   let folderId = String(config.DRIVE_FOLDER_ID || APP.DRIVE_FOLDER_ID || '').trim();
@@ -107,6 +120,14 @@ function doPost(e) {
         return jsonResponse_(handleUpdateStatus(data));
       case 'getWarrantyPrintQueue':
         return jsonResponse_(handleGetWarrantyPrintQueue(data));
+      case 'getPrintLayouts':
+        return jsonResponse_(handleGetPrintLayouts(data));
+      case 'savePrintLayout':
+        return jsonResponse_(handleSavePrintLayout(data));
+      case 'deletePrintLayout':
+        return jsonResponse_(handleDeletePrintLayout(data));
+      case 'setActivePrintLayout':
+        return jsonResponse_(handleSetActivePrintLayout(data));
       case 'saveWarrantyCardTypes':
         return jsonResponse_(handleSaveWarrantyCardTypes(data));
       case 'markWarrantyCardsPrinted':
@@ -505,6 +526,109 @@ function handleGetWarrantyPrintQueue(data) {
   });
 
   return { success: true, data: { rows: rows, summary: summary } };
+}
+
+function handleGetPrintLayouts(data) {
+  requireSession_(data.token);
+  ensurePrintLayoutDefaults_(getSheet_(SHEETS.CONFIG));
+  return { success: true, data: getPrintLayoutState_() };
+}
+
+function handleSavePrintLayout(data) {
+  const session = requireSession_(data.token);
+  const cleaned = normalizePrintLayoutInput_(data.layout || data, true);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    ensurePrintLayoutDefaults_(getSheet_(SHEETS.CONFIG));
+    const sheet = getSheet_(SHEETS.PRINT_LAYOUTS);
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0] || HEADERS[SHEETS.PRINT_LAYOUTS];
+    const col = indexMap_(headers);
+    const now = new Date();
+    let targetRow = -1;
+    let existing = null;
+    if (cleaned.id) {
+      for (let i = 1; i < values.length; i++) {
+        if (clean_(values[i][col.ID]) === cleaned.id) {
+          targetRow = i + 1;
+          existing = values[i];
+          break;
+        }
+      }
+    }
+    const id = cleaned.id || generatePrintLayoutId_(cleaned.type);
+    const isBuiltin = existing ? parseBoolean_(existing[col['Is Builtin']]) : false;
+    const createdAt = existing ? existing[col['Created At']] : now;
+    const row = [
+      id,
+      cleaned.type,
+      cleaned.name,
+      cleaned.offsetX,
+      cleaned.offsetY,
+      cleaned.gapProductModel,
+      cleaned.gapModelSerial,
+      isBuiltin ? 'TRUE' : 'FALSE',
+      createdAt,
+      now,
+      session.username,
+    ];
+    if (targetRow > -1) sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
+    else sheet.appendRow(row);
+    const state = getPrintLayoutState_();
+    state.savedLayoutId = id;
+    return { success: true, data: state };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleDeletePrintLayout(data) {
+  requireSession_(data.token);
+  const id = clean_(data.id || data.layoutId);
+  if (!id) throw new Error('Layout wajib dipilih');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    ensurePrintLayoutDefaults_(getSheet_(SHEETS.CONFIG));
+    const state = getPrintLayoutState_();
+    const layout = state.layouts.find(function (item) { return item.id === id; });
+    if (!layout) throw new Error('Layout tidak ditemukan');
+    if (layout.isBuiltin) throw new Error('Layout bawaan tidak boleh dihapus');
+    if (state.active[layout.type] === id) throw new Error('Pilih layout aktif lain sebelum menghapus layout ini');
+
+    const sheet = getSheet_(SHEETS.PRINT_LAYOUTS);
+    const values = sheet.getDataRange().getValues();
+    const col = indexMap_(values[0]);
+    for (let i = 1; i < values.length; i++) {
+      if (clean_(values[i][col.ID]) === id) {
+        sheet.deleteRow(i + 1);
+        break;
+      }
+    }
+    return { success: true, data: getPrintLayoutState_() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleSetActivePrintLayout(data) {
+  const session = requireSession_(data.token);
+  const type = normalizePrintLayoutType_(data.type, true);
+  const id = clean_(data.id || data.layoutId);
+  if (!id) throw new Error('Layout wajib dipilih');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    ensurePrintLayoutDefaults_(getSheet_(SHEETS.CONFIG));
+    const state = getPrintLayoutState_();
+    const layout = state.layouts.find(function (item) { return item.id === id && item.type === type; });
+    if (!layout) throw new Error('Layout tidak ditemukan untuk jenis kartu ini');
+    upsertConfig_(getSheet_(SHEETS.CONFIG), ACTIVE_PRINT_LAYOUT_KEYS[type], id, true);
+    return { success: true, data: getPrintLayoutState_(), updatedBy: session.username };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function handleSaveWarrantyCardTypes(data) {
@@ -927,6 +1051,127 @@ function normalizeWarrantyCardType_(value, required) {
   if (raw === 'local' || raw === 'lokal') return 'Local';
   if (raw === 'import' || raw === 'impor') return 'Import';
   throw new Error('Jenis kartu tidak valid: ' + value);
+}
+
+function ensurePrintLayoutDefaults_(configSheet) {
+  const sheet = getSheet_(SHEETS.PRINT_LAYOUTS);
+  const state = getPrintLayoutRows_();
+  const now = new Date();
+  DEFAULT_PRINT_LAYOUTS.forEach(function (layout) {
+    if (!state.byId[layout.id]) {
+      sheet.appendRow([
+        layout.id,
+        layout.type,
+        layout.name,
+        layout.offsetX,
+        layout.offsetY,
+        layout.gapProductModel,
+        layout.gapModelSerial,
+        'TRUE',
+        now,
+        now,
+        'system',
+      ]);
+    }
+    upsertConfig_(configSheet, ACTIVE_PRINT_LAYOUT_KEYS[layout.type], layout.id, false);
+  });
+}
+
+function getPrintLayoutState_() {
+  const rows = getPrintLayoutRows_().layouts;
+  const configSheet = getSheet_(SHEETS.CONFIG);
+  const config = getConfig();
+  const active = {
+    local: clean_(config.ACTIVE_PRINT_LAYOUT_LOCAL) || 'local-default',
+    import: clean_(config.ACTIVE_PRINT_LAYOUT_IMPORT) || 'import-default',
+  };
+  const activeLayouts = {};
+  ['local', 'import'].forEach(function (type) {
+    let layout = rows.find(function (item) { return item.id === active[type] && item.type === type; });
+    if (!layout) {
+      layout = rows.find(function (item) { return item.id === type + '-default' && item.type === type; });
+      active[type] = layout ? layout.id : '';
+      if (layout) upsertConfig_(configSheet, ACTIVE_PRINT_LAYOUT_KEYS[type], layout.id, true);
+    }
+    activeLayouts[type] = layout || null;
+  });
+  return { layouts: rows, active: active, activeLayouts: activeLayouts };
+}
+
+function getPrintLayoutRows_() {
+  const sheet = getSheet_(SHEETS.PRINT_LAYOUTS);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || HEADERS[SHEETS.PRINT_LAYOUTS];
+  const col = indexMap_(headers);
+  const layouts = [];
+  const byId = {};
+  for (let i = 1; i < values.length; i++) {
+    if (!values[i].some(function (cell) { return cell !== ''; })) continue;
+    const layout = {
+      id: clean_(values[i][col.ID]),
+      type: normalizePrintLayoutType_(values[i][col.Type], false),
+      name: clean_(values[i][col.Name]),
+      offsetX: normalizeNumber_(values[i][col['Offset X']], 0, true),
+      offsetY: normalizeNumber_(values[i][col['Offset Y']], 0, true),
+      gapProductModel: normalizeNumber_(values[i][col['Gap Product Model']], 0, false),
+      gapModelSerial: normalizeNumber_(values[i][col['Gap Model Serial']], 0, false),
+      isBuiltin: parseBoolean_(values[i][col['Is Builtin']]),
+      createdAt: toIso_(values[i][col['Created At']]),
+      updatedAt: toIso_(values[i][col['Updated At']]),
+      updatedBy: clean_(values[i][col['Updated By']]),
+    };
+    if (!layout.id || !layout.type) continue;
+    layouts.push(layout);
+    byId[layout.id] = layout;
+  }
+  layouts.sort(function (a, b) {
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    if (a.isBuiltin !== b.isBuiltin) return a.isBuiltin ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  return { layouts: layouts, byId: byId };
+}
+
+function normalizePrintLayoutInput_(input, requireName) {
+  const layout = {
+    id: clean_(input.id || input.layoutId),
+    type: normalizePrintLayoutType_(input.type, true),
+    name: clean_(input.name),
+    offsetX: normalizeNumber_(input.offsetX, 0, true),
+    offsetY: normalizeNumber_(input.offsetY, 0, true),
+    gapProductModel: normalizeNumber_(input.gapProductModel, 0, false),
+    gapModelSerial: normalizeNumber_(input.gapModelSerial, 0, false),
+  };
+  if (requireName && !layout.name) throw new Error('Nama layout wajib diisi');
+  return layout;
+}
+
+function normalizePrintLayoutType_(value, required) {
+  const raw = clean_(value).toLowerCase();
+  if (!raw) {
+    if (required) throw new Error('Jenis layout wajib dipilih');
+    return '';
+  }
+  if (raw === 'local' || raw === 'lokal') return 'local';
+  if (raw === 'import' || raw === 'impor') return 'import';
+  throw new Error('Jenis layout tidak valid: ' + value);
+}
+
+function normalizeNumber_(value, fallback, allowNegative) {
+  if (value === '' || value == null) return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error('Nilai angka tidak valid');
+  if (!allowNegative && number < 0) throw new Error('Nilai gap minimal 0');
+  return number;
+}
+
+function parseBoolean_(value) {
+  const raw = clean_(value).toLowerCase();
+  return raw === 'true' || raw === 'yes' || raw === '1';
+}
+
+function generatePrintLayoutId_(type) {
+  return type + '-' + Utilities.getUuid().slice(0, 8).toLowerCase();
 }
 
 function replaceItemRows_(id, items) {

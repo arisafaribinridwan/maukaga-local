@@ -55,7 +55,8 @@
         color: #000;
         --warranty-adjust-x: 0mm;
         --warranty-adjust-y: 0mm;
-        --warranty-detail-adjust-y: 0mm;
+        --warranty-gap-product-model: 0mm;
+        --warranty-gap-model-serial: 0mm;
       }
       .warranty-print-page.local {
         --warranty-base-x: 5mm;
@@ -85,7 +86,7 @@
           calc(
             var(--warranty-base-y, 0mm) + var(--warranty-adjust-y, 0mm) +
               var(--warranty-detail-base-y, 0mm) +
-              var(--warranty-detail-adjust-y, 0mm)
+              var(--warranty-field-gap-y, 0mm)
           )
         );
       }
@@ -101,6 +102,7 @@
         left: 0mm;
         top: 236.3mm;
         width: 61.1mm;
+        --warranty-field-gap-y: var(--warranty-gap-product-model);
         height: 5.3mm;
         font-size: 10pt;
         line-height: 5.3mm;
@@ -109,6 +111,7 @@
         left: 73.3mm;
         top: 236.3mm;
         width: 51.3mm;
+        --warranty-field-gap-y: calc(var(--warranty-gap-product-model) + var(--warranty-gap-model-serial));
         height: 5.3mm;
         font-size: 10pt;
         line-height: 5.3mm;
@@ -183,6 +186,11 @@
               class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               Cetak Kartu</button
+            ><button
+              onclick="openSettings()"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
+            >
+              Setting</button
             ><a
               href="index.html"
               class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold"
@@ -273,6 +281,67 @@
       </div>
     </section>
 
+    <section id="section-settings" class="hidden px-4 py-6 sm:py-10">
+      <div class="mx-auto max-w-5xl">
+        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-wide text-slate-700">Setting</p>
+            <h1 class="text-2xl font-bold sm:text-3xl">Layout Cetak Garansi</h1>
+            <p class="mt-1 text-sm text-slate-600">Atur layout aktif Local dan Import yang tersimpan di Google Sheet.</p>
+          </div>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <button onclick="openWarrantyPrintQueue()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Cetak Kartu</button>
+            <button onclick="backToDashboard()" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Kembali ke Dashboard</button>
+            <button onclick="handleLogout()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Logout</button>
+          </div>
+        </div>
+        <div id="settings-alert" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
+        <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div class="grid gap-4 lg:grid-cols-3">
+            <div class="space-y-4 rounded-xl bg-slate-50 p-4">
+              <label class="block text-sm font-medium">Jenis Layout
+                <select id="layout-type" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" onchange="changeLayoutType()">
+                  <option value="local">Local</option>
+                  <option value="import">Import</option>
+                </select>
+              </label>
+              <label class="block text-sm font-medium">Layout aktif
+                <select id="active-layout-select" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" onchange="selectLayoutForEdit(this.value)"></select>
+              </label>
+              <div id="active-layout-summary" class="rounded-lg bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200"></div>
+              <button onclick="addPrintLayout()" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Tambah Layout</button>
+              <button onclick="duplicateActivePrintLayout()" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Duplikasi Layout Aktif</button>
+            </div>
+            <div class="lg:col-span-2">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block text-sm font-medium sm:col-span-2">Nama layout
+                  <input id="layout-name" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                </label>
+                <label class="block text-sm font-medium">Offset X (mm)
+                  <input id="layout-offset-x" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.1" />
+                </label>
+                <label class="block text-sm font-medium">Offset Y (mm)
+                  <input id="layout-offset-y" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.1" />
+                </label>
+                <label class="block text-sm font-medium">Gap Produk ke Model (mm)
+                  <input id="layout-gap-product-model" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" min="0" step="0.1" />
+                </label>
+                <label class="block text-sm font-medium">Gap Model ke Nomor Seri (mm)
+                  <input id="layout-gap-model-serial" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" min="0" step="0.1" />
+                </label>
+              </div>
+              <div class="mt-5 flex flex-wrap gap-2">
+                <button onclick="savePrintLayoutForm()" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Simpan</button>
+                <button onclick="setActivePrintLayoutFromForm()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Jadikan Aktif</button>
+                <button id="btn-delete-layout" onclick="deletePrintLayoutFromForm()" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Hapus</button>
+              </div>
+              <p class="mt-3 text-sm text-slate-500">Offset boleh negatif. Nilai gap minimal 0 dan boleh desimal.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
     <section id="section-warranty-queue" class="hidden px-4 py-6 sm:py-10">
       <div class="mx-auto max-w-7xl">
         <div
@@ -308,7 +377,7 @@
           class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
         >
           <div id="print-summary" class="mb-4 grid gap-3 sm:grid-cols-4"></div>
-          <div class="grid gap-3 lg:grid-cols-8">
+          <div class="grid gap-3 lg:grid-cols-6">
             <input
               id="print-search"
               class="rounded-lg border border-slate-300 px-3 py-2 lg:col-span-2"
@@ -323,45 +392,20 @@
               <option value="import">Import</option>
               <option value="unset">Belum Dipilih</option>
             </select>
-            <label class="text-sm font-medium"
-              >Offset Local X (mm)<input
-                id="offset-local-x"
-                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                type="number"
-                step="0.5"
-                value="0"
-            /></label>
-            <label class="text-sm font-medium"
-              >Offset Local Y (mm)<input
-                id="offset-local-y"
-                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                type="number"
-                step="0.5"
-                value="0"
-            /></label>
-            <label class="text-sm font-medium"
-              >Detail Local Y (mm)<input
-                id="offset-local-detail-y"
-                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                type="number"
-                step="0.5"
-                value="0"
-            /></label>
-            <label class="text-sm font-medium"
-              >Offset Import Y (mm)<input
-                id="offset-import-y"
-                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                type="number"
-                step="0.5"
-                value="0"
-            /></label>
             <button
               onclick="loadWarrantyPrintQueue()"
               class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold"
             >
               Refresh
             </button>
+            <button
+              onclick="openSettings()"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
+            >
+              Setting Layout
+            </button>
           </div>
+          <div id="print-layout-summary" class="mt-4 grid gap-3 sm:grid-cols-2"></div>
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               onclick="selectVisiblePrintRows()"
@@ -550,6 +594,11 @@
         printQueue: [],
         selectedPrintKeys: new Set(),
         visiblePrintKeys: [],
+        printLayouts: [],
+        activePrintLayouts: { local: null, import: null },
+        activePrintLayoutIds: { local: 'local-default', import: 'import-default' },
+        selectedLayoutType: 'local',
+        editingLayout: null,
       };
       let debounceTimer = null;
 
@@ -584,6 +633,12 @@
           .classList.toggle(
             'hidden',
             !state.token || state.currentView !== 'warranty',
+          );
+        document
+          .getElementById('section-settings')
+          .classList.toggle(
+            'hidden',
+            !state.token || state.currentView !== 'settings',
           );
         document
           .getElementById('section-detail')
@@ -643,6 +698,9 @@
         state.printQueue = [];
         state.selectedPrintKeys.clear();
         state.visiblePrintKeys = [];
+        state.printLayouts = [];
+        state.activePrintLayouts = { local: null, import: null };
+        state.editingLayout = null;
         routeView();
       }
 
@@ -728,7 +786,189 @@
       async function openWarrantyPrintQueue() {
         state.currentView = 'warranty';
         routeView();
+        await loadPrintLayouts('print-alert');
         await loadWarrantyPrintQueue();
+      }
+
+      async function openSettings() {
+        state.currentView = 'settings';
+        routeView();
+        await loadPrintLayouts('settings-alert');
+        renderPrintLayoutSettings();
+      }
+
+      async function loadPrintLayouts(alertTarget) {
+        try {
+          const res = await callAPI('getPrintLayouts');
+          if (!res.success) throw new Error(res.error || 'Gagal memuat layout cetak');
+          state.printLayouts = res.data.layouts || [];
+          state.activePrintLayoutIds = res.data.active || { local: 'local-default', import: 'import-default' };
+          state.activePrintLayouts = res.data.activeLayouts || { local: null, import: null };
+          renderPrintLayoutSummary();
+          if (state.currentView === 'settings') renderPrintLayoutSettings();
+        } catch (err) {
+          handleApiError(err, alertTarget || 'dashboard-alert');
+          throw err;
+        }
+      }
+
+      function applyPrintLayoutState(data) {
+        state.printLayouts = data.layouts || [];
+        state.activePrintLayoutIds = data.active || { local: 'local-default', import: 'import-default' };
+        state.activePrintLayouts = data.activeLayouts || { local: null, import: null };
+        if (data.savedLayoutId) {
+          state.editingLayout = state.printLayouts.find((layout) => layout.id === data.savedLayoutId) || null;
+        }
+        renderPrintLayoutSummary();
+        renderPrintLayoutSettings();
+      }
+
+      function renderPrintLayoutSummary() {
+        const el = document.getElementById('print-layout-summary');
+        if (!el) return;
+        el.innerHTML = ['local', 'import']
+          .map((type) => {
+            const layout = getActivePrintLayout(type);
+            const label = type === 'local' ? 'Local' : 'Import';
+            return `<div class="rounded-xl bg-slate-50 p-3 text-sm ring-1 ring-slate-200"><p class="font-semibold text-slate-800">Layout aktif ${label}</p><p class="mt-1">${escapeHtml(layout.name)}</p><p class="mt-1 text-xs text-slate-500">X ${escapeHtml(layout.offsetX)}mm, Y ${escapeHtml(layout.offsetY)}mm, Produk→Model ${escapeHtml(layout.gapProductModel)}mm, Model→Serial ${escapeHtml(layout.gapModelSerial)}mm</p></div>`;
+          })
+          .join('');
+      }
+
+      function renderPrintLayoutSettings() {
+        if (state.currentView !== 'settings') return;
+        const typeEl = document.getElementById('layout-type');
+        if (!typeEl) return;
+        typeEl.value = state.selectedLayoutType;
+        const layouts = getLayoutsByType(state.selectedLayoutType);
+        const activeId = state.activePrintLayoutIds[state.selectedLayoutType];
+        const select = document.getElementById('active-layout-select');
+        select.innerHTML = layouts
+          .map((layout) => `<option value="${escapeAttr(layout.id)}" ${layout.id === (state.editingLayout && state.editingLayout.id ? state.editingLayout.id : activeId) ? 'selected' : ''}>${escapeHtml(layout.name)}${layout.isBuiltin ? ' (bawaan)' : ''}${layout.id === activeId ? ' - aktif' : ''}</option>`)
+          .join('');
+        const selectedId = select.value || activeId;
+        const selected = layouts.find((layout) => layout.id === selectedId) || getActivePrintLayout(state.selectedLayoutType);
+        setEditingLayout(selected);
+      }
+
+      function setEditingLayout(layout) {
+        state.editingLayout = layout ? { ...layout } : null;
+        const editable = state.editingLayout || createEmptyPrintLayout(state.selectedLayoutType);
+        document.getElementById('layout-name').value = editable.name || '';
+        document.getElementById('layout-offset-x').value = editable.offsetX ?? 0;
+        document.getElementById('layout-offset-y').value = editable.offsetY ?? 0;
+        document.getElementById('layout-gap-product-model').value = editable.gapProductModel ?? 0;
+        document.getElementById('layout-gap-model-serial').value = editable.gapModelSerial ?? 0;
+        document.getElementById('btn-delete-layout').classList.toggle('hidden', !!editable.isBuiltin || !editable.id);
+        document.getElementById('active-layout-summary').innerHTML = describePrintLayout(getActivePrintLayout(state.selectedLayoutType));
+      }
+
+      function changeLayoutType() {
+        state.selectedLayoutType = document.getElementById('layout-type').value;
+        state.editingLayout = null;
+        renderPrintLayoutSettings();
+      }
+
+      function selectLayoutForEdit(id) {
+        const layout = state.printLayouts.find((item) => item.id === id);
+        if (layout) setEditingLayout(layout);
+      }
+
+      function addPrintLayout() {
+        setEditingLayout(createEmptyPrintLayout(state.selectedLayoutType));
+      }
+
+      function duplicateActivePrintLayout() {
+        const active = getActivePrintLayout(state.selectedLayoutType);
+        setEditingLayout({ ...active, id: '', name: active.name + ' Copy', isBuiltin: false });
+      }
+
+      async function savePrintLayoutForm() {
+        const layout = readPrintLayoutForm();
+        if (!layout) return;
+        showAlert('loading', 'Menyimpan layout...', 'settings-alert');
+        try {
+          const res = await callAPI('savePrintLayout', { layout });
+          if (!res.success) throw new Error(res.error || 'Gagal menyimpan layout');
+          applyPrintLayoutState(res.data);
+          showAlert('success', 'Layout berhasil disimpan', 'settings-alert');
+        } catch (err) {
+          handleApiError(err, 'settings-alert');
+        }
+      }
+
+      async function setActivePrintLayoutFromForm() {
+        if (!state.editingLayout || !state.editingLayout.id) {
+          return showAlert('error', 'Simpan layout terlebih dahulu sebelum dijadikan aktif', 'settings-alert');
+        }
+        showAlert('loading', 'Mengubah layout aktif...', 'settings-alert');
+        try {
+          const res = await callAPI('setActivePrintLayout', {
+            type: state.selectedLayoutType,
+            id: state.editingLayout.id,
+          });
+          if (!res.success) throw new Error(res.error || 'Gagal mengubah layout aktif');
+          applyPrintLayoutState(res.data);
+          showAlert('success', 'Layout aktif berhasil diperbarui', 'settings-alert');
+        } catch (err) {
+          handleApiError(err, 'settings-alert');
+        }
+      }
+
+      async function deletePrintLayoutFromForm() {
+        if (!state.editingLayout || !state.editingLayout.id) return;
+        if (!confirm('Hapus layout custom ini?')) return;
+        showAlert('loading', 'Menghapus layout...', 'settings-alert');
+        try {
+          const res = await callAPI('deletePrintLayout', { id: state.editingLayout.id });
+          if (!res.success) throw new Error(res.error || 'Gagal menghapus layout');
+          state.editingLayout = null;
+          applyPrintLayoutState(res.data);
+          showAlert('success', 'Layout berhasil dihapus', 'settings-alert');
+        } catch (err) {
+          handleApiError(err, 'settings-alert');
+        }
+      }
+
+      function readPrintLayoutForm() {
+        const layout = {
+          id: state.editingLayout && state.editingLayout.id ? state.editingLayout.id : '',
+          type: state.selectedLayoutType,
+          name: document.getElementById('layout-name').value.trim(),
+          offsetX: Number(document.getElementById('layout-offset-x').value || 0),
+          offsetY: Number(document.getElementById('layout-offset-y').value || 0),
+          gapProductModel: Number(document.getElementById('layout-gap-product-model').value || 0),
+          gapModelSerial: Number(document.getElementById('layout-gap-model-serial').value || 0),
+        };
+        if (!layout.name) {
+          showAlert('error', 'Nama layout wajib diisi', 'settings-alert');
+          return null;
+        }
+        if (![layout.offsetX, layout.offsetY, layout.gapProductModel, layout.gapModelSerial].every(Number.isFinite)) {
+          showAlert('error', 'Semua nilai posisi harus berupa angka', 'settings-alert');
+          return null;
+        }
+        if (layout.gapProductModel < 0 || layout.gapModelSerial < 0) {
+          showAlert('error', 'Nilai gap minimal 0', 'settings-alert');
+          return null;
+        }
+        return layout;
+      }
+
+      function getLayoutsByType(type) {
+        return state.printLayouts.filter((layout) => layout.type === type);
+      }
+
+      function getActivePrintLayout(type) {
+        return state.activePrintLayouts[type] || getLayoutsByType(type).find((layout) => layout.id === `${type}-default`) || createEmptyPrintLayout(type);
+      }
+
+      function createEmptyPrintLayout(type) {
+        return { id: '', type, name: '', offsetX: 0, offsetY: 0, gapProductModel: 0, gapModelSerial: 0, isBuiltin: false };
+      }
+
+      function describePrintLayout(layout) {
+        return `<p class="font-semibold">Aktif: ${escapeHtml(layout.name || '-')}</p><p class="mt-1">Offset X ${escapeHtml(layout.offsetX)}mm, Offset Y ${escapeHtml(layout.offsetY)}mm</p><p class="mt-1">Gap Produk→Model ${escapeHtml(layout.gapProductModel)}mm, Model→Serial ${escapeHtml(layout.gapModelSerial)}mm</p>`;
       }
 
       async function loadWarrantyPrintQueue() {
@@ -902,7 +1142,7 @@
         }
       }
 
-      function printSelectedWarrantyCards() {
+      async function printSelectedWarrantyCards() {
         const rows = getSelectedPrintRowsSorted();
         if (!rows.length)
           return showAlert(
@@ -911,6 +1151,7 @@
             'print-alert',
           );
         if (!ensureRowsHaveCardType(rows)) return;
+        await loadPrintLayouts('print-alert');
         renderWarrantyPrintContent(rows);
         showAlert(
           'success',
@@ -956,35 +1197,11 @@
       function renderWarrantyPrintContent(rows) {
         document.getElementById('warranty-print-content').innerHTML = rows
           .map((row) => {
-            const cardType =
-              row.jenisKartuKey === 'import' ? 'import' : 'local';
-            const adjustY = getWarrantyAdjustY(cardType);
-            const adjustX = getWarrantyAdjustX(cardType);
-            const detailAdjustY = getWarrantyDetailAdjustY(cardType);
-            return `<div class="warranty-print-page ${escapeAttr(cardType)}" style="--warranty-adjust-x:${escapeAttr(adjustX)}mm;--warranty-adjust-y:${escapeAttr(adjustY)}mm;--warranty-detail-adjust-y:${escapeAttr(detailAdjustY)}mm"><div class="warranty-field warranty-product">${escapeHtml(row.produk)}</div><div class="warranty-field warranty-detail-field warranty-model">${escapeHtml(row.model)}</div><div class="warranty-field warranty-detail-field warranty-serial">${escapeHtml(row.nomorSeri)}</div></div>`;
+            const cardType = row.jenisKartuKey === 'import' ? 'import' : 'local';
+            const layout = getActivePrintLayout(cardType);
+            return `<div class="warranty-print-page ${escapeAttr(cardType)}" style="--warranty-adjust-x:${escapeAttr(layout.offsetX)}mm;--warranty-adjust-y:${escapeAttr(layout.offsetY)}mm;--warranty-gap-product-model:${escapeAttr(layout.gapProductModel)}mm;--warranty-gap-model-serial:${escapeAttr(layout.gapModelSerial)}mm"><div class="warranty-field warranty-product">${escapeHtml(row.produk)}</div><div class="warranty-field warranty-detail-field warranty-model">${escapeHtml(row.model)}</div><div class="warranty-field warranty-detail-field warranty-serial">${escapeHtml(row.nomorSeri)}</div></div>`;
           })
           .join('');
-      }
-
-      function getWarrantyAdjustX(jenisKartu) {
-        if (jenisKartu === 'import') return 0;
-        return getNumericInputValue('offset-local-x', 0);
-      }
-
-      function getWarrantyAdjustY(jenisKartu) {
-        const inputId =
-          jenisKartu === 'import' ? 'offset-import-y' : 'offset-local-y';
-        return getNumericInputValue(inputId, 0);
-      }
-
-      function getWarrantyDetailAdjustY(jenisKartu) {
-        if (jenisKartu !== 'local') return 0;
-        return getNumericInputValue('offset-local-detail-y', 0);
-      }
-
-      function getNumericInputValue(id, fallback) {
-        const value = Number(document.getElementById(id).value);
-        return Number.isFinite(value) ? value : fallback;
       }
 
       function getSelectedPrintRows() {

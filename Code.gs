@@ -15,6 +15,8 @@ const SHEETS = {
   CONFIG: 'Config',
   STATUS_LOG: 'StatusLog',
   EMAIL_LOG: 'EmailLog',
+  WARRANTY_CARDS: 'WarrantyCards',
+  PRINT_BATCH: 'PrintBatch',
 };
 
 const HEADERS = {
@@ -25,6 +27,8 @@ const HEADERS = {
   [SHEETS.CONFIG]: ['Key', 'Value'],
   [SHEETS.STATUS_LOG]: ['Timestamp', 'ID Pengajuan', 'Status Lama', 'Status Baru', 'Catatan Admin', 'User'],
   [SHEETS.EMAIL_LOG]: ['Timestamp', 'Subject', 'Recipients', 'Jumlah Pengajuan', 'Status'],
+  [SHEETS.WARRANTY_CARDS]: ['ID Pengajuan', 'No Item', 'Produk', 'Model', 'Nomor Seri', 'Jenis Kartu', 'Status Cetak', 'Print Batch ID', 'Printed At', 'Printed By', 'Reprint Count', 'Last Reprint At', 'Last Reprint By', 'Catatan'],
+  [SHEETS.PRINT_BATCH]: ['Batch ID', 'Tipe Batch', 'Created At', 'Created By', 'Jumlah Item', 'Catatan'],
 };
 
 const DRAFT_STATUS = 'Menunggu Upload';
@@ -101,6 +105,12 @@ function doPost(e) {
         return jsonResponse_(handleGetDetail(data));
       case 'updateStatus':
         return jsonResponse_(handleUpdateStatus(data));
+      case 'getWarrantyPrintQueue':
+        return jsonResponse_(handleGetWarrantyPrintQueue(data));
+      case 'saveWarrantyCardTypes':
+        return jsonResponse_(handleSaveWarrantyCardTypes(data));
+      case 'markWarrantyCardsPrinted':
+        return jsonResponse_(handleMarkWarrantyCardsPrinted(data));
       case 'adminLogout':
         return jsonResponse_(handleAdminLogout(data));
       default:
@@ -452,6 +462,149 @@ function handleUpdateStatus(data) {
   }
 }
 
+function handleGetWarrantyPrintQueue(data) {
+  requireSession_(data.token);
+  const includePrinted = data.includePrinted === true || clean_(data.includePrinted).toLowerCase() === 'yes';
+  const search = clean_(data.search).toLowerCase();
+  const cardType = normalizeWarrantyCardType_(data.jenisKartu, false);
+  const rows = getApprovedWarrantyQueueItems_().filter(function (item) {
+    if (!includePrinted && item.statusCetak === 'Printed') return false;
+    if (cardType && item.jenisKartu !== cardType) return false;
+    if (search) {
+      const haystack = [
+        item.idPengajuan,
+        item.nama,
+        item.bagianCabang,
+        item.produk,
+        item.model,
+        item.nomorSeri,
+      ].join(' ').toLowerCase();
+      if (haystack.indexOf(search) === -1) return false;
+    }
+    return true;
+  });
+
+  rows.sort(function (a, b) {
+    const typeOrder = { Local: 1, Import: 2, '': 3 };
+    const aType = typeOrder[a.jenisKartu] || 3;
+    const bType = typeOrder[b.jenisKartu] || 3;
+    if (aType !== bType) return aType - bType;
+    const aTime = new Date(a.timestampSubmit || 0).getTime();
+    const bTime = new Date(b.timestampSubmit || 0).getTime();
+    if (aTime !== bTime) return aTime - bTime;
+    if (a.idPengajuan !== b.idPengajuan) return String(a.idPengajuan).localeCompare(String(b.idPengajuan));
+    return Number(a.noItem) - Number(b.noItem);
+  });
+
+  const summary = { total: rows.length, local: 0, import: 0, belumKategori: 0, printed: 0 };
+  rows.forEach(function (item) {
+    if (item.jenisKartu === 'Local') summary.local += 1;
+    else if (item.jenisKartu === 'Import') summary.import += 1;
+    else summary.belumKategori += 1;
+    if (item.statusCetak === 'Printed') summary.printed += 1;
+  });
+
+  return { success: true, data: { rows: rows, summary: summary } };
+}
+
+function handleSaveWarrantyCardTypes(data) {
+  const session = requireSession_(data.token);
+  const items = Array.isArray(data.items) ? data.items : [];
+  if (!items.length) throw new Error('Pilih item terlebih dahulu');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const approvedMap = mapByWarrantyKey_(getApprovedWarrantyQueueItems_());
+    const state = getWarrantyCardSheetState_();
+    items.forEach(function (input) {
+      const id = clean_(input.idPengajuan);
+      const noItem = clean_(input.noItem);
+      const jenisKartu = normalizeWarrantyCardType_(input.jenisKartu, true);
+      const key = warrantyCardKey_(id, noItem);
+      const item = approvedMap[key];
+      if (!item) throw new Error('Item tidak ditemukan atau belum berstatus Disetujui: ' + id + ' #' + noItem);
+
+      const existing = state.rows[key] ? state.rows[key].data : {};
+      writeWarrantyCardRow_(state.sheet, state.rows[key], {
+        idPengajuan: item.idPengajuan,
+        noItem: item.noItem,
+        produk: item.produk,
+        model: item.model,
+        nomorSeri: item.nomorSeri,
+        jenisKartu: jenisKartu,
+        statusCetak: clean_(existing['Status Cetak']) || 'Belum Dicetak',
+        printBatchId: clean_(existing['Print Batch ID']),
+        printedAt: existing['Printed At'] || '',
+        printedBy: clean_(existing['Printed By']),
+        reprintCount: Number(existing['Reprint Count'] || 0),
+        lastReprintAt: existing['Last Reprint At'] || '',
+        lastReprintBy: clean_(existing['Last Reprint By']),
+        catatan: clean_(existing['Catatan']) || ('Jenis kartu disimpan oleh ' + session.username),
+      });
+      state.rows[key] = findWarrantyCardStateRow_(state.sheet, key);
+    });
+
+    return { success: true, data: { count: items.length } };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleMarkWarrantyCardsPrinted(data) {
+  const session = requireSession_(data.token);
+  const inputs = Array.isArray(data.items) ? data.items : [];
+  const catatan = clean_(data.catatan);
+  if (!inputs.length) throw new Error('Pilih item yang sudah dicetak');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const approvedMap = mapByWarrantyKey_(getApprovedWarrantyQueueItems_());
+    const state = getWarrantyCardSheetState_();
+    const now = new Date();
+    const batchId = generatePrintBatchId_('KG');
+
+    inputs.forEach(function (input) {
+      const id = clean_(input.idPengajuan);
+      const noItem = clean_(input.noItem);
+      const key = warrantyCardKey_(id, noItem);
+      const item = approvedMap[key];
+      if (!item) throw new Error('Item tidak ditemukan atau belum berstatus Disetujui: ' + id + ' #' + noItem);
+
+      const existing = state.rows[key] ? state.rows[key].data : {};
+      const jenisKartu = normalizeWarrantyCardType_(input.jenisKartu || existing['Jenis Kartu'], true);
+      const alreadyPrinted = clean_(existing['Status Cetak']) === 'Printed';
+      const printedAt = existing['Printed At'] || now;
+      const printedBy = clean_(existing['Printed By']) || session.username;
+      const reprintCount = alreadyPrinted ? Number(existing['Reprint Count'] || 0) + 1 : Number(existing['Reprint Count'] || 0);
+
+      writeWarrantyCardRow_(state.sheet, state.rows[key], {
+        idPengajuan: item.idPengajuan,
+        noItem: item.noItem,
+        produk: item.produk,
+        model: item.model,
+        nomorSeri: item.nomorSeri,
+        jenisKartu: jenisKartu,
+        statusCetak: 'Printed',
+        printBatchId: batchId,
+        printedAt: printedAt,
+        printedBy: printedBy,
+        reprintCount: reprintCount,
+        lastReprintAt: alreadyPrinted ? now : (existing['Last Reprint At'] || ''),
+        lastReprintBy: alreadyPrinted ? session.username : clean_(existing['Last Reprint By']),
+        catatan: catatan,
+      });
+      state.rows[key] = findWarrantyCardStateRow_(state.sheet, key);
+    });
+
+    getSheet_(SHEETS.PRINT_BATCH).appendRow([batchId, 'warranty_card', now, session.username, inputs.length, catatan]);
+    return { success: true, data: { batchId: batchId, count: inputs.length } };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function sendEmailDigest() {
   const config = getConfig();
   const recipients = readObjects_(SHEETS.RECIPIENTS)
@@ -670,6 +823,112 @@ function getItemsForPengajuan_(id) {
     .map(function (row) { return { noItem: row['No Item'], produk: row['Produk'], model: row['Model'], nomorSeri: row['Nomor Seri'] }; });
 }
 
+function getApprovedWarrantyQueueItems_() {
+  const pengajuanMap = {};
+  readObjects_(SHEETS.PENGAJUAN).forEach(function (row) {
+    if (row['Status'] !== 'Disetujui') return;
+    pengajuanMap[row['ID Pengajuan']] = row;
+  });
+
+  const cardState = getWarrantyCardSheetState_();
+  return readObjects_(SHEETS.ITEMS)
+    .filter(function (row) { return pengajuanMap[row['ID Pengajuan']]; })
+    .map(function (row) {
+      const pengajuan = pengajuanMap[row['ID Pengajuan']];
+      const key = warrantyCardKey_(row['ID Pengajuan'], row['No Item']);
+      const state = cardState.rows[key] ? cardState.rows[key].data : {};
+      const jenisKartu = normalizeWarrantyCardType_(state['Jenis Kartu'], false);
+      return {
+        key: key,
+        idPengajuan: row['ID Pengajuan'],
+        noItem: row['No Item'],
+        produk: row['Produk'],
+        model: row['Model'],
+        nomorSeri: row['Nomor Seri'],
+        jenisKartu: jenisKartu,
+        jenisKartuKey: jenisKartu ? jenisKartu.toLowerCase() : '',
+        statusCetak: clean_(state['Status Cetak']) || 'Belum Dicetak',
+        printBatchId: clean_(state['Print Batch ID']),
+        printedAt: toIso_(state['Printed At']),
+        printedBy: clean_(state['Printed By']),
+        reprintCount: Number(state['Reprint Count'] || 0),
+        nama: pengajuan['Nama'],
+        bagianCabang: pengajuan['Bagian/Cabang'],
+        timestampSubmit: toIso_(pengajuan['Timestamp Submit']),
+      };
+    });
+}
+
+function getWarrantyCardSheetState_() {
+  const sheet = getSheet_(SHEETS.WARRANTY_CARDS);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || HEADERS[SHEETS.WARRANTY_CARDS];
+  const rows = {};
+  for (let i = 1; i < values.length; i++) {
+    if (!values[i].some(function (cell) { return cell !== ''; })) continue;
+    const data = {};
+    headers.forEach(function (header, index) { data[header] = values[i][index]; });
+    rows[warrantyCardKey_(data['ID Pengajuan'], data['No Item'])] = { rowNumber: i + 1, data: data };
+  }
+  return { sheet: sheet, rows: rows };
+}
+
+function findWarrantyCardStateRow_(sheet, key) {
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0] || HEADERS[SHEETS.WARRANTY_CARDS];
+  for (let i = 1; i < values.length; i++) {
+    const data = {};
+    headers.forEach(function (header, index) { data[header] = values[i][index]; });
+    if (warrantyCardKey_(data['ID Pengajuan'], data['No Item']) === key) return { rowNumber: i + 1, data: data };
+  }
+  return null;
+}
+
+function writeWarrantyCardRow_(sheet, existingRow, data) {
+  const row = [
+    data.idPengajuan,
+    data.noItem,
+    data.produk,
+    data.model,
+    data.nomorSeri,
+    data.jenisKartu,
+    data.statusCetak,
+    data.printBatchId,
+    data.printedAt,
+    data.printedBy,
+    data.reprintCount,
+    data.lastReprintAt,
+    data.lastReprintBy,
+    data.catatan,
+  ];
+  if (existingRow && existingRow.rowNumber) {
+    sheet.getRange(existingRow.rowNumber, 1, 1, row.length).setValues([row]);
+  } else {
+    sheet.appendRow(row);
+  }
+}
+
+function mapByWarrantyKey_(items) {
+  const map = {};
+  items.forEach(function (item) { map[warrantyCardKey_(item.idPengajuan, item.noItem)] = item; });
+  return map;
+}
+
+function warrantyCardKey_(id, noItem) {
+  return clean_(id) + '::' + clean_(noItem);
+}
+
+function normalizeWarrantyCardType_(value, required) {
+  const raw = clean_(value).toLowerCase();
+  if (!raw) {
+    if (required) throw new Error('Jenis kartu wajib dipilih');
+    return '';
+  }
+  if (raw === 'local' || raw === 'lokal') return 'Local';
+  if (raw === 'import' || raw === 'impor') return 'Import';
+  throw new Error('Jenis kartu tidak valid: ' + value);
+}
+
 function replaceItemRows_(id, items) {
   const sheet = getSheet_(SHEETS.ITEMS);
   const values = sheet.getDataRange().getValues();
@@ -703,6 +962,11 @@ function generateIdUnlocked_() {
     });
   }
   return prefix + String(max + 1).padStart(4, '0');
+}
+
+function generatePrintBatchId_(prefix) {
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss');
+  return prefix + '-PRINT-' + stamp + '-' + Utilities.getUuid().slice(0, 8).toUpperCase();
 }
 
 function generateResumeToken_() {

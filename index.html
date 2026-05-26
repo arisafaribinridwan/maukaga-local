@@ -35,13 +35,45 @@
         <h1 id="app-title" class="text-2xl font-bold sm:text-3xl mb-2">Mau KaGa</h1>
         <p class="text-sm font-semibold uppercase tracking-wide text-blue-500">Form Permintaan Kartu Garansi</p>
       </div>
-      <button id="btn-toggle-draft" type="button" onclick="toggleDraftSection()" aria-expanded="false" aria-controls="section-draft-resume" class="inline-flex items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg>
-        <span>Lanjutkan Draft</span>
-      </button>
+      <div class="flex flex-wrap gap-2">
+        <button id="btn-toggle-status" type="button" onclick="toggleStatusSection()" aria-expanded="false" aria-controls="section-status-check" class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.35-4.35"></path><circle cx="11" cy="11" r="8"></circle></svg>
+          <span>Cek Status</span>
+        </button>
+        <button id="btn-toggle-draft" type="button" onclick="toggleDraftSection()" aria-expanded="false" aria-controls="section-draft-resume" class="inline-flex items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg>
+          <span>Lanjutkan Draft</span>
+        </button>
+      </div>
     </header>
 
     <div id="alert-box" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
+
+    <section id="section-status-check" class="mb-6 hidden overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl shadow-slate-200/60">
+      <div class="flex items-start justify-between gap-4 p-6 pb-0 md:p-8 md:pb-0">
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight text-slate-800 md:text-3xl">Cek Status</h2>
+          <p class="mt-2 text-sm text-slate-500 md:text-base">Masukkan ID Pengajuan untuk melihat status proses terbaru.</p>
+        </div>
+        <button type="button" onclick="closeStatusSection()" class="group inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500 transition-all duration-200 hover:bg-red-500 hover:text-white" aria-label="Tutup Cek Status">
+          <svg class="h-5 w-5 transition-transform duration-200 group-hover:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="p-6 md:p-8">
+        <form id="status-check-form" onsubmit="handleCheckStatus(event)">
+          <label for="status-check-id" class="mb-2 block text-sm font-semibold text-slate-700">ID Pengajuan</label>
+          <div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <input id="status-check-id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 font-mono text-lg font-medium text-slate-700 outline-none transition-all placeholder:font-normal placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10" type="text" placeholder="Contoh: KG-20260526-0001" autocomplete="off">
+            <button id="btn-check-status" type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.98] disabled:bg-blue-400 sm:w-auto">
+              <svg id="status-loading-icon" class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              <svg id="status-search-icon" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.35-4.35"></path><circle cx="11" cy="11" r="8"></circle></svg>
+              <span id="status-check-btn-text">Cek Status</span>
+            </button>
+          </div>
+        </form>
+      </div>
+      <div id="status-check-result" class="hidden px-6 pb-6 pt-0 md:px-8 md:pb-8"></div>
+    </section>
 
     <section id="section-draft-resume" class="mb-6 hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div class="mb-4 flex items-start justify-between gap-4">
@@ -141,6 +173,7 @@
     let lastValidationIncludesFile = false;
     let currentDraftId = '';
     let currentResumeToken = '';
+    let statusCheckRequestId = 0;
     const draftStorageKey = 'pengajuan_kartu_garansi_draft';
     const maxItems = Number(CONFIG.MAX_ITEMS || 10);
     const maxUploadMb = Number(CONFIG.MAX_UPLOAD_MB || 10);
@@ -154,6 +187,8 @@
       setupLiveValidation();
       setFinalSubmissionMode(false);
       initializeDraftResume();
+      const statusCheckInput = document.getElementById('status-check-id');
+      statusCheckInput.addEventListener('input', () => statusCheckInput.classList.remove('field-error'));
     });
 
     function renderItems() {
@@ -272,6 +307,100 @@
         el.addEventListener('input', refreshValidationErrors);
         el.addEventListener('change', refreshValidationErrors);
       });
+    }
+
+    function toggleStatusSection() {
+      const section = document.getElementById('section-status-check');
+      setStatusSectionOpen(section.classList.contains('hidden'));
+    }
+
+    function closeStatusSection() {
+      setStatusSectionOpen(false);
+    }
+
+    function setStatusSectionOpen(isOpen) {
+      const section = document.getElementById('section-status-check');
+      const button = document.getElementById('btn-toggle-status');
+      section.classList.toggle('hidden', !isOpen);
+      button.setAttribute('aria-expanded', String(isOpen));
+      button.querySelector('span').textContent = isOpen ? 'Tutup Cek Status' : 'Cek Status';
+      if (isOpen) {
+        document.getElementById('status-check-id').focus();
+        return;
+      }
+      resetStatusCheckSection();
+    }
+
+    function resetStatusCheckSection() {
+      statusCheckRequestId += 1;
+      const statusInput = document.getElementById('status-check-id');
+      statusInput.value = '';
+      statusInput.classList.remove('field-error');
+      const result = document.getElementById('status-check-result');
+      result.className = 'hidden px-6 pb-6 pt-0 md:px-8 md:pb-8';
+      result.innerHTML = '';
+      setStatusCheckLoading(false);
+    }
+
+    async function handleCheckStatus(event) {
+      if (event) event.preventDefault();
+      const statusInput = document.getElementById('status-check-id');
+      const idPengajuan = statusInput.value.trim();
+      statusInput.classList.remove('field-error');
+      if (!idPengajuan) {
+        statusInput.classList.add('field-error');
+        showStatusCheckResult('error', 'Masukkan ID Pengajuan terlebih dahulu.');
+        return;
+      }
+
+      const requestId = ++statusCheckRequestId;
+      setStatusCheckLoading(true);
+      showStatusCheckResult('loading', 'Memeriksa status pengajuan...');
+      try {
+        const result = await callAPI('checkPengajuanStatus', { idPengajuan });
+        if (requestId !== statusCheckRequestId) return;
+        if (!result.success) throw new Error(result.error || 'Status pengajuan gagal dimuat');
+        renderStatusCheckResult(result.data || { idPengajuan });
+      } catch (error) {
+        if (requestId === statusCheckRequestId) showStatusCheckResult('error', error.message || String(error));
+      } finally {
+        if (requestId === statusCheckRequestId) setStatusCheckLoading(false);
+      }
+    }
+
+    function renderStatusCheckResult(data) {
+      showStatusCheckResult('success', `
+        <div class="rounded-2xl border border-slate-200/60 bg-gradient-to-br from-slate-50 to-blue-50/40 p-8 text-center md:p-12">
+          <p class="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-slate-400 md:text-sm">Hasil Pencarian</p>
+          <h3 class="mx-auto mb-8 max-w-full break-all px-4 font-mono text-4xl font-black tracking-tight text-slate-800 md:text-5xl">${escapeHtml(data.idPengajuan || '-')}</h3>
+          ${statusCheckBadge(data.status)}
+          <p class="mx-auto mt-6 max-w-2xl text-base font-medium leading-relaxed text-slate-600">${escapeHtml(statusCheckInfoText(data.status))}</p>
+        </div>
+      `);
+    }
+
+    function showStatusCheckResult(type, message) {
+      const result = document.getElementById('status-check-result');
+      const classes = {
+        loading: 'border-slate-200/60 bg-gradient-to-br from-slate-50 to-blue-50/40 text-blue-800',
+        error: 'border-red-100 bg-red-50 text-red-800',
+      };
+      result.className = 'px-6 pb-6 pt-0 md:px-8 md:pb-8';
+      result.innerHTML = type === 'success'
+        ? message
+        : `<div class="rounded-2xl border p-6 text-center text-sm font-semibold ${classes[type] || classes.error}">${escapeHtml(message)}</div>`;
+      result.classList.remove('hidden');
+    }
+
+    function setStatusCheckLoading(isLoading) {
+      const btn = document.getElementById('btn-check-status');
+      const text = document.getElementById('status-check-btn-text');
+      const searchIcon = document.getElementById('status-search-icon');
+      const loadingIcon = document.getElementById('status-loading-icon');
+      btn.disabled = isLoading;
+      text.textContent = isLoading ? 'Mencari...' : 'Cek Status';
+      searchIcon.classList.toggle('hidden', isLoading);
+      loadingIcon.classList.toggle('hidden', !isLoading);
     }
 
     function toggleDraftSection() {
@@ -624,7 +753,37 @@
     function clearErrors() { document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error')); }
     function getFileExtension(name) { return String(name).split('.').pop().toLowerCase(); }
     function formatBytes(bytes) { return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`; }
+    function formatDateTime(value) { if (!value) return ''; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('id-ID'); }
     function formatDate(value) { return value ? new Date(value + 'T00:00:00').toLocaleDateString('id-ID') : '-'; }
+    function statusCheckBadge(status) {
+      const map = {
+        'Menunggu Upload': { badge: 'bg-amber-100 text-amber-800 border-amber-200/60', dot: 'bg-amber-500' },
+        Baru: { badge: 'bg-blue-100 text-blue-700 border-blue-200/60', dot: 'bg-blue-600' },
+        Disetujui: { badge: 'bg-green-100 text-green-700 border-green-200/60', dot: 'bg-green-600' },
+        Ditolak: { badge: 'bg-red-100 text-red-700 border-red-200/60', dot: 'bg-red-600' },
+        Selesai: { badge: 'bg-slate-200 text-slate-800 border-slate-300/70', dot: 'bg-slate-600' },
+      };
+      const tone = map[status] || { badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500' };
+      return `
+        <div class="inline-flex items-center justify-center gap-3 rounded-full border px-8 py-3.5 shadow-sm ${tone.badge}">
+          <span class="relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${tone.dot}"></span>
+            <span class="relative inline-flex h-3 w-3 rounded-full ${tone.dot}"></span>
+          </span>
+          <span class="text-xl font-bold tracking-wide">${escapeHtml(status || '-')}</span>
+        </div>
+      `;
+    }
+    function statusCheckInfoText(status) {
+      const map = {
+        Baru: 'Pengajuan sudah diterima dan sedang menunggu proses pengecekan admin.',
+        Disetujui: 'Pengajuan telah disetujui dan akan diproses ke tahap berikutnya.',
+        Ditolak: 'Pengajuan ditolak. Silakan periksa kembali data pengajuan atau hubungi admin.',
+        Selesai: 'Pengajuan telah selesai diproses.',
+        'Menunggu Upload': 'Pengajuan masih berupa draft. Lanjutkan draft untuk upload hard copy bertanda tangan dan submit final.',
+      };
+      return map[status] || 'Status pengajuan berhasil ditemukan.';
+    }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[c])); }
     function escapeAttr(value) { return escapeHtml(value).replace(/`/g, '&#096;'); }
   </script>

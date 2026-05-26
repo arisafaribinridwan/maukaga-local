@@ -108,6 +108,8 @@ function doPost(e) {
         return jsonResponse_(handleGetDraftPengajuan(data));
       case 'checkDraftPengajuanStatus':
         return jsonResponse_(handleCheckDraftPengajuanStatus(data));
+      case 'checkPengajuanStatus':
+        return jsonResponse_(handleCheckPengajuanStatus(data));
       case 'submitDraftPengajuan':
         return jsonResponse_(handleSubmitDraftPengajuan(data));
       case 'adminLogin':
@@ -282,6 +284,34 @@ function handleCheckDraftPengajuanStatus(data) {
   }
 
   return { success: true, data: { idPengajuan: id, status: status, resumeToken: resumeToken } };
+}
+
+function handleCheckPengajuanStatus(data) {
+  const id = clean_(data.idPengajuan);
+  if (!id) throw new Error('Masukkan ID Pengajuan terlebih dahulu.');
+
+  const record = findPengajuanRecord_(id);
+  if (!record) throw new Error('ID Pengajuan tidak ditemukan. Periksa kembali ID yang dimasukkan.');
+
+  const row = record.row;
+  const col = record.col;
+  const status = clean_(row[col['Status']]);
+  if (VALID_STATUSES.concat([DRAFT_STATUS]).indexOf(status) === -1) {
+    throw new Error('Status pengajuan tidak bisa ditampilkan.');
+  }
+
+  return {
+    success: true,
+    data: {
+      idPengajuan: id,
+      status: status,
+      timestampSubmit: toIso_(row[col['Timestamp Submit']]),
+      jumlahItem: row[col['Jumlah Item']],
+      catatanAdmin: row[col['Catatan Admin']],
+      tanggalUpdateStatusTerakhir: toIso_(row[col['Tanggal Update Status Terakhir']]),
+      draftUpdatedAt: toIso_(row[col['Draft Updated At']]),
+    },
+  };
 }
 
 function handleSubmitDraftPengajuan(data) {

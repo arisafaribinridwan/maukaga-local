@@ -322,16 +322,24 @@
     }
 
     function setStatusSectionOpen(isOpen) {
+      if (isOpen) setDraftSectionOpen(false);
       const section = document.getElementById('section-status-check');
       const button = document.getElementById('btn-toggle-status');
       section.classList.toggle('hidden', !isOpen);
       button.setAttribute('aria-expanded', String(isOpen));
       button.querySelector('span').textContent = isOpen ? 'Tutup Cek Status' : 'Cek Status';
+      updatePengajuanFormVisibility();
       if (isOpen) {
         document.getElementById('status-check-id').focus();
         return;
       }
       resetStatusCheckSection();
+    }
+
+    function updatePengajuanFormVisibility() {
+      const statusOpen = !document.getElementById('section-status-check').classList.contains('hidden');
+      const draftOpen = !document.getElementById('section-draft-resume').classList.contains('hidden');
+      document.getElementById('pengajuan-form').classList.toggle('hidden', statusOpen || draftOpen);
     }
 
     function resetStatusCheckSection() {
@@ -416,11 +424,13 @@
     }
 
     function setDraftSectionOpen(isOpen) {
+      if (isOpen) setStatusSectionOpen(false);
       const section = document.getElementById('section-draft-resume');
       const button = document.getElementById('btn-toggle-draft');
       section.classList.toggle('hidden', !isOpen);
       button.setAttribute('aria-expanded', String(isOpen));
       button.querySelector('span').textContent = isOpen ? 'Tutup Lanjutkan Draft' : 'Lanjutkan Draft';
+      updatePengajuanFormVisibility();
       if (isOpen) {
         document.getElementById('resume-id').focus();
         return;

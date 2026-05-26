@@ -276,7 +276,12 @@ function handleCheckDraftPengajuanStatus(data) {
     throw new Error('ID Pengajuan ini sudah dikirim final dan tidak bisa dibuka sebagai draft.');
   }
 
-  return { success: true, data: { idPengajuan: id, status: status } };
+  const resumeToken = clean_(record.row[record.col['Resume Token']]);
+  if (!resumeToken) {
+    throw new Error('Draft ditemukan, tetapi Resume Token tidak tersedia. Draft ini tidak bisa dilanjutkan. Silakan buat draft baru atau hubungi admin.');
+  }
+
+  return { success: true, data: { idPengajuan: id, status: status, resumeToken: resumeToken } };
 }
 
 function handleSubmitDraftPengajuan(data) {

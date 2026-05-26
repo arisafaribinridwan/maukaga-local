@@ -346,7 +346,8 @@
         if (!resumeToken) {
           const statusResult = await callAPI('checkDraftPengajuanStatus', { idPengajuan });
           if (!statusResult.success) throw new Error(statusResult.error || 'ID Pengajuan tidak bisa dilanjutkan.');
-          throw new Error('Draft ditemukan, tetapi link lanjutannya tidak tersimpan di browser ini. Buka Link Lanjutkan Draft dari saat draft disimpan, atau lanjutkan dari browser yang sama saat draft dibuat.');
+          resumeToken = String(statusResult.data && statusResult.data.resumeToken || '').trim();
+          if (!resumeToken) throw new Error('Draft ditemukan, tetapi Resume Token tidak tersedia. Draft ini tidak bisa dilanjutkan.');
         }
         const result = await callAPI('getDraftPengajuan', { idPengajuan, resumeToken });
         if (!result.success) throw new Error(result.error || 'Draft gagal dimuat');

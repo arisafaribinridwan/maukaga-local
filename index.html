@@ -6,6 +6,16 @@
   <title>Pengajuan Kartu Garansi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="config.js"></script>
+  <script>
+    if (typeof CONFIG === 'undefined') {
+      window.CONFIG = {
+        API_URL: 'https://script.google.com/macros/s/AKfycbxAikXauXo-Ct_FfawqXjrdMxa3K-cK6eyBZFuG74IlrVNW2bE2vwX4BLsEo-CS7AwIyA/exec',
+        APP_NAME: 'Mau KaGa',
+        MAX_UPLOAD_MB: 10,
+        MAX_ITEMS: 10,
+      };
+    }
+  </script>
   <style>
     @media print {
       body > *:not(#section-print) { display: none !important; }

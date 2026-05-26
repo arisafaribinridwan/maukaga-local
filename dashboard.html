@@ -19,6 +19,68 @@
         border-color: #ef4444 !important;
         background: #fef2f2;
       }
+      .shipping-label-preview-pages {
+        display: grid;
+        gap: 1rem;
+        min-width: max-content;
+      }
+      .shipping-label-sheet {
+        width: 210mm;
+        min-height: 297mm;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: repeat(3, 60mm);
+        grid-auto-rows: 50mm;
+        align-content: start;
+        justify-content: center;
+        gap: 4mm 5mm;
+        padding: 10mm;
+        background: #fff;
+        color: #0f172a;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+      }
+      .shipping-label-card {
+        width: 60mm;
+        height: 50mm;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        border: 1px solid #cbd5e1;
+        padding: 5mm 4mm;
+        background: #fff;
+        font-family: Arial, sans-serif;
+      }
+      .shipping-label-branch {
+        overflow-wrap: anywhere;
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1.05;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+      .shipping-label-qty-row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 2mm;
+        border-top: 1px solid #cbd5e1;
+        padding-top: 3mm;
+      }
+      .shipping-label-qty-row span {
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        color: #475569;
+      }
+      .shipping-label-qty-row strong {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 0.85;
+        color: #0f172a;
+      }
       @media screen {
         #section-warranty-print {
           display: none;
@@ -43,6 +105,17 @@
           break-after: page;
         }
         .warranty-print-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+        .shipping-label-sheet {
+          box-shadow: none;
+        }
+        .shipping-label-print-page {
+          page-break-after: always;
+          break-after: page;
+        }
+        .shipping-label-print-page:last-child {
           page-break-after: auto;
           break-after: auto;
         }
@@ -443,6 +516,12 @@
             >
               Tandai Sudah Dicetak
             </button>
+            <button
+              onclick="openShippingLabelPreview()"
+              class="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800"
+            >
+              Preview Label Cabang
+            </button>
           </div>
         </section>
         <section
@@ -474,6 +553,54 @@
               ></tbody>
             </table>
           </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="section-shipping-label-preview" class="hidden px-4 py-6 sm:py-10">
+      <div class="mx-auto max-w-7xl">
+        <div
+          class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p
+              class="text-sm font-semibold uppercase tracking-wide text-cyan-700"
+            >
+              Label Pengiriman
+            </p>
+            <h1 class="text-2xl font-bold sm:text-3xl">Preview Label Cabang</h1>
+          </div>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <button
+              onclick="backToWarrantyQueue()"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
+            >
+              Kembali ke Antrian
+            </button>
+            <button
+              onclick="printShippingLabels()"
+              class="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800"
+            >
+              Cetak Label
+            </button>
+          </div>
+        </div>
+        <div
+          id="shipping-label-alert"
+          class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"
+        ></div>
+        <section
+          class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+        >
+          <div id="shipping-label-summary" class="grid gap-3 sm:grid-cols-3"></div>
+        </section>
+        <section
+          class="overflow-x-auto rounded-2xl bg-slate-200 p-4 shadow-inner ring-1 ring-slate-300"
+        >
+          <div
+            id="shipping-label-preview-content"
+            class="shipping-label-preview-pages"
+          ></div>
         </section>
       </div>
     </section>
@@ -594,6 +721,8 @@
         printQueue: [],
         selectedPrintKeys: new Set(),
         visiblePrintKeys: [],
+        shippingLabels: [],
+        shippingLabelMeta: null,
         printLayouts: [],
         activePrintLayouts: { local: null, import: null },
         activePrintLayoutIds: { local: 'local-default', import: 'import-default' },
@@ -633,6 +762,12 @@
           .classList.toggle(
             'hidden',
             !state.token || state.currentView !== 'warranty',
+          );
+        document
+          .getElementById('section-shipping-label-preview')
+          .classList.toggle(
+            'hidden',
+            !state.token || state.currentView !== 'shipping-label',
           );
         document
           .getElementById('section-settings')
@@ -698,6 +833,8 @@
         state.printQueue = [];
         state.selectedPrintKeys.clear();
         state.visiblePrintKeys = [];
+        state.shippingLabels = [];
+        state.shippingLabelMeta = null;
         state.printLayouts = [];
         state.activePrintLayouts = { local: null, import: null };
         state.editingLayout = null;
@@ -1184,14 +1321,142 @@
             throw new Error(res.error || 'Gagal menandai kartu tercetak');
           state.selectedPrintKeys.clear();
           await loadWarrantyPrintQueue();
+          const batchId = res.data.batchId || '';
+          const labelButton = batchId
+            ? `<button type="button" onclick="openShippingLabelPreview('${escapeAttr(batchId)}')" class="ml-2 rounded bg-green-700 px-3 py-1 text-xs font-semibold text-white">Preview Label</button>`
+            : '';
           showAlert(
             'success',
-            `Batch ${escapeHtml(res.data.batchId)} tersimpan (${escapeHtml(res.data.count)} kartu)`,
+            `Batch ${escapeHtml(batchId)} tersimpan (${escapeHtml(res.data.count)} kartu)${labelButton}`,
             'print-alert',
           );
         } catch (err) {
           handleApiError(err, 'print-alert');
         }
+      }
+
+      async function openShippingLabelPreview(batchId = '') {
+        state.currentView = 'shipping-label';
+        routeView();
+        state.shippingLabels = [];
+        state.shippingLabelMeta = { batchId, search: '', totalItems: 0 };
+        renderShippingLabelSummary();
+        document.getElementById('shipping-label-preview-content').innerHTML = '';
+        showAlert('loading', 'Memuat data label...', 'shipping-label-alert');
+        try {
+          const search = batchId
+            ? ''
+            : document.getElementById('print-search').value.trim();
+          const res = await callAPI('getWarrantyPrintQueue', {
+            search,
+            includePrinted: true,
+          });
+          if (!res.success)
+            throw new Error(res.error || 'Gagal memuat data label');
+          const printedRows = (res.data.rows || []).filter(
+            (row) =>
+              row.statusCetak === 'Printed' &&
+              (!batchId || row.printBatchId === batchId),
+          );
+          state.shippingLabels = buildShippingLabels(printedRows);
+          state.shippingLabelMeta = {
+            batchId,
+            search,
+            totalItems: printedRows.length,
+          };
+          renderShippingLabelPreview();
+          if (!state.shippingLabels.length) {
+            showAlert(
+              'error',
+              'Tidak ada item Printed untuk label cabang',
+              'shipping-label-alert',
+            );
+          } else {
+            hideAlert('shipping-label-alert');
+          }
+        } catch (err) {
+          handleApiError(err, 'shipping-label-alert');
+        }
+      }
+
+      function buildShippingLabels(rows) {
+        const groups = new Map();
+        rows.forEach((row) => {
+          const cabang =
+            String(row.bagianCabang || '').trim() || 'Tanpa Cabang';
+          const key = cabang.toLowerCase();
+          if (!groups.has(key)) groups.set(key, { cabang, qty: 0 });
+          groups.get(key).qty += 1;
+        });
+        return Array.from(groups.values()).sort((a, b) =>
+          a.cabang.localeCompare(b.cabang, 'id-ID'),
+        );
+      }
+
+      function renderShippingLabelPreview() {
+        renderShippingLabelSummary();
+        const el = document.getElementById('shipping-label-preview-content');
+        if (!state.shippingLabels.length) {
+          el.innerHTML =
+            '<div class="rounded-xl bg-white px-4 py-8 text-center text-sm text-slate-500">Belum ada label untuk ditampilkan</div>';
+          return;
+        }
+        el.innerHTML = buildShippingLabelPagesHtml(state.shippingLabels);
+      }
+
+      function renderShippingLabelSummary() {
+        const labels = state.shippingLabels || [];
+        const totalQty = labels.reduce(
+          (sum, label) => sum + Number(label.qty || 0),
+          0,
+        );
+        const cards = [
+          ['Cabang', labels.length],
+          ['Qty Item Produk', totalQty],
+          ['Ukuran Label', '60 x 50 mm'],
+        ];
+        document.getElementById('shipping-label-summary').innerHTML = cards
+          .map(
+            ([label, value]) =>
+              `<div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"><p class="text-sm font-semibold text-slate-600">${escapeHtml(label)}</p><p class="mt-2 text-2xl font-bold text-slate-900">${escapeHtml(value)}</p></div>`,
+          )
+          .join('');
+      }
+
+      function buildShippingLabelPagesHtml(labels) {
+        const pages = [];
+        for (let i = 0; i < labels.length; i += 15) {
+          pages.push(labels.slice(i, i + 15));
+        }
+        return pages
+          .map(
+            (page) =>
+              `<div class="shipping-label-sheet shipping-label-print-page">${page.map(buildShippingLabelCardHtml).join('')}</div>`,
+          )
+          .join('');
+      }
+
+      function buildShippingLabelCardHtml(label) {
+        return `<div class="shipping-label-card"><div class="shipping-label-branch">${escapeHtml(label.cabang)}</div><div class="shipping-label-qty-row"><span>QTY ITEM</span><strong>${escapeHtml(label.qty)}</strong></div></div>`;
+      }
+
+      function printShippingLabels() {
+        if (!state.shippingLabels.length) {
+          showAlert(
+            'error',
+            'Tidak ada label untuk dicetak',
+            'shipping-label-alert',
+          );
+          return;
+        }
+        document.getElementById('warranty-print-content').innerHTML =
+          buildShippingLabelPagesHtml(state.shippingLabels);
+        showAlert(
+          'success',
+          `${state.shippingLabels.length} label siap dicetak`,
+          'shipping-label-alert',
+        );
+        setTimeout(() => window.print(), 100);
       }
 
       function renderWarrantyPrintContent(rows) {
@@ -1397,6 +1662,10 @@
       }
       function backToDashboard() {
         loadDashboard();
+      }
+      function backToWarrantyQueue() {
+        state.currentView = 'warranty';
+        routeView();
       }
 
       function showAlert(type, message, targetEl) {

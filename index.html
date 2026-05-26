@@ -78,7 +78,7 @@
         <div id="item-list"></div>
       </section>
 
-      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <section id="section-upload-final" class="hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <h2 class="mb-4 text-lg font-semibold text-slate-700">Upload File Hard Copy Bertanda Tangan</h2>
         <div class="flex flex-col gap-4 rounded-lg border-2 border-dashed border-blue-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-center gap-3">
@@ -99,7 +99,7 @@
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>
           <span>Simpan Draft & Cetak</span>
         </button>
-        <button id="btn-submit" type="button" onclick="handleSubmitFinal()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+        <button id="btn-submit" type="button" onclick="handleSubmitFinal()" class="hidden items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
           <span>Submit Final</span>
         </button>
@@ -142,6 +142,7 @@
       renderItems();
       document.getElementById('fileUpload').addEventListener('change', updateFileInfo);
       setupLiveValidation();
+      setFinalSubmissionMode(false);
       initializeDraftResume();
     });
 
@@ -351,6 +352,7 @@
         if (!result.success) throw new Error(result.error || 'Draft gagal dimuat');
         fillFormFromDraft(result.data);
         setDraftReference(idPengajuan, resumeToken);
+        setFinalSubmissionMode(true);
         if (reference.fromUrl) clearResumeParamsFromUrl();
         showAlert('success', `Draft ${escapeHtml(idPengajuan)} berhasil dimuat. Upload file signed lalu klik Submit Final.`);
       } catch (error) {
@@ -432,6 +434,7 @@
       items = [{ produk: '', model: '', nomorSeri: '' }];
       renderItems();
       clearDraftReference();
+      setFinalSubmissionMode(false);
       document.getElementById('file-info').textContent = 'Belum ada file dipilih. Wajib saat submit final.';
       hideAlert();
       document.getElementById('section-success').classList.add('hidden');
@@ -495,6 +498,16 @@
       document.getElementById('section-print').style.display = 'none';
       document.getElementById('section-success').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setFinalSubmissionMode(isEnabled) {
+      const uploadSection = document.getElementById('section-upload-final');
+      const submitButton = document.getElementById('btn-submit');
+      const saveDraftButton = document.getElementById('btn-save-draft');
+      uploadSection.classList.toggle('hidden', !isEnabled);
+      submitButton.classList.toggle('hidden', !isEnabled);
+      submitButton.classList.toggle('inline-flex', isEnabled);
+      saveDraftButton.classList.toggle('hidden', isEnabled);
     }
 
     function initializeDraftResume() {

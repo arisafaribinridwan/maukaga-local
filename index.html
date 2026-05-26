@@ -323,8 +323,11 @@
         if (!result.success) throw new Error(result.error || 'Draft gagal disimpan');
         setDraftReference(result.data.idPengajuan, result.data.resumeToken);
         const resumeUrl = buildResumeUrl(currentDraftId, currentResumeToken);
+        const resumeInfo = resumeUrl
+          ? `Untuk lanjut dari perangkat lain, buka <a class="font-semibold underline" href="${escapeAttr(resumeUrl)}">Link Lanjutkan Draft</a>.`
+          : 'Untuk lanjut dari perangkat lain, buka file HTML ini lalu masukkan ID Pengajuan pada menu Lanjutkan Draft.';
         document.getElementById('print-content').innerHTML = buildPrintHtml(currentDraftId);
-        showAlert('success', `Draft tersimpan. Simpan ID <strong>${escapeHtml(currentDraftId)}</strong> di printout. Untuk lanjut dari perangkat lain, buka <a class="font-semibold underline" href="${escapeAttr(resumeUrl)}">Link Lanjutkan Draft</a>.`);
+        showAlert('success', `Draft tersimpan. Simpan ID <strong>${escapeHtml(currentDraftId)}</strong> di printout. ${resumeInfo}`);
         document.getElementById('section-form').classList.add('hidden');
         document.getElementById('section-success').classList.add('hidden');
         document.getElementById('section-print').style.display = 'block';
@@ -572,6 +575,7 @@
     }
 
     function buildResumeUrl(idPengajuan, resumeToken) {
+      if (window.location.protocol === 'file:') return '';
       const url = new URL(window.location.href);
       url.searchParams.set('id', idPengajuan);
       url.searchParams.set('token', resumeToken);

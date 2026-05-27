@@ -285,6 +285,20 @@
           class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
         ></div>
         <section
+          id="section-category-review"
+          class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+        >
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">Review Nama Produk Model</h2>
+              <p class="mt-1 text-sm text-slate-600">Nama Produk untuk model baru harus disetujui sebelum item masuk antrean cetak.</p>
+            </div>
+            <button onclick="loadCategoryReviewQueue()" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Refresh Review</button>
+          </div>
+          <div id="category-review-alert" class="mb-4 hidden rounded-lg border px-4 py-3 text-sm"></div>
+          <div id="category-review-list" class="space-y-3"></div>
+        </section>
+        <section
           class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
         >
           <div class="grid gap-3 md:grid-cols-5">
@@ -640,6 +654,7 @@
                   <th class="px-4 py-3 text-left">Produk</th>
                   <th class="px-4 py-3 text-left">Model</th>
                   <th class="px-4 py-3 text-left">Nomor Seri</th>
+                  <th class="px-4 py-3 text-left">Verifikasi Nama Produk</th>
                 </tr>
               </thead>
               <tbody id="items-table" class="divide-y divide-slate-100"></tbody>
@@ -718,6 +733,7 @@
         page: 1,
         pageSize: 20,
         currentDetail: null,
+        categoryReview: [],
         printQueue: [],
         selectedPrintKeys: new Set(),
         visiblePrintKeys: [],
@@ -861,8 +877,66 @@
             res.data.pageSize,
           );
           hideAlert('dashboard-alert');
+          await loadCategoryReviewQueue();
         } catch (err) {
           handleApiError(err, 'dashboard-alert');
+        }
+      }
+
+      async function loadCategoryReviewQueue() {
+        const list = document.getElementById('category-review-list');
+        if (!state.token || !list) return;
+        showAlert('loading', 'Memuat review Nama Produk...', 'category-review-alert');
+        try {
+          const res = await callAPI('getProductReviewQueue');
+          if (!res.success) throw new Error(res.error || 'Gagal memuat review Nama Produk');
+          state.categoryReview = res.data.rows || [];
+          renderCategoryReviewQueue();
+          hideAlert('category-review-alert');
+        } catch (err) {
+          handleApiError(err, 'category-review-alert');
+        }
+      }
+
+      function renderCategoryReviewQueue() {
+        const list = document.getElementById('category-review-list');
+        if (!list) return;
+        if (!state.categoryReview.length) {
+          list.innerHTML = '<div class="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Tidak ada Nama Produk yang perlu direview</div>';
+          return;
+        }
+        list.innerHTML = state.categoryReview
+          .map((group, index) => {
+            const options = (group.produkOptions || []).map((item) => `${escapeHtml(item.produk)} (${escapeHtml(item.count)})`).join(', ');
+            const samples = (group.items || []).slice(0, 3).map((item) => `${escapeHtml(item.idPengajuan)} #${escapeHtml(item.noItem)} - ${escapeHtml(item.produk)}`).join('<br>');
+            return `<div class="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><div class="flex flex-wrap items-center gap-2"><span class="badge bg-amber-100 text-amber-800">Nama Produk belum terverifikasi</span><span class="font-semibold text-slate-900">${escapeHtml(group.modelDisplay || group.modelNormalized)}</span></div><p class="mt-1 font-mono text-xs text-slate-500">${escapeHtml(group.modelNormalized)}</p><p class="mt-2 text-sm text-slate-700">${escapeHtml(group.count)} item pending${options ? ` · Usulan: ${options}` : ''}</p>${samples ? `<div class="mt-2 text-xs text-slate-600">${samples}</div>` : ''}</div><div class="flex flex-col gap-2 sm:min-w-72"><input id="category-review-input-${index}" value="${escapeAttr(group.produk || '')}" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Nama Produk yang benar"><button onclick="approveCategoryReview(${index})" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Approve Nama Produk</button></div></div></div>`;
+          })
+          .join('');
+      }
+
+      async function approveCategoryReview(index) {
+        const group = state.categoryReview[index];
+        if (!group) return;
+        const input = document.getElementById(`category-review-input-${index}`);
+        const produk = input ? input.value.trim() : '';
+        if (!produk) {
+          if (input) input.classList.add('field-error');
+          return showAlert('error', 'Nama Produk wajib diisi sebelum approve', 'category-review-alert');
+        }
+        showAlert('loading', 'Menyimpan approval Nama Produk...', 'category-review-alert');
+        try {
+          const res = await callAPI('approveModelProduk', {
+            modelNormalized: group.modelNormalized,
+            modelDisplay: group.modelDisplay,
+            produk,
+          });
+          if (!res.success) throw new Error(res.error || 'Approval Nama Produk gagal');
+          await loadCategoryReviewQueue();
+          showAlert('success', `${escapeHtml(res.data.count)} item diverifikasi untuk model ${escapeHtml(group.modelDisplay || group.modelNormalized)}`, 'category-review-alert');
+          if (state.currentView === 'detail' && state.currentId) await loadDetail(state.currentId);
+          if (state.currentView === 'warranty') await loadWarrantyPrintQueue();
+        } catch (err) {
+          handleApiError(err, 'category-review-alert');
         }
       }
 
@@ -1577,10 +1651,10 @@
           ? items
               .map(
                 (item) =>
-                  `<tr><td class="px-4 py-3">${escapeHtml(item.noItem)}</td><td class="px-4 py-3">${escapeHtml(item.produk)}</td><td class="px-4 py-3">${escapeHtml(item.model)}</td><td class="px-4 py-3">${escapeHtml(item.nomorSeri)}</td></tr>`,
+                  `<tr><td class="px-4 py-3">${escapeHtml(item.noItem)}</td><td class="px-4 py-3">${escapeHtml(item.produk)}</td><td class="px-4 py-3">${escapeHtml(item.model)}</td><td class="px-4 py-3 font-mono">${escapeHtml(item.nomorSeri)}</td><td class="px-4 py-3">${productStatusBadge(item.produkStatus)}</td></tr>`,
               )
               .join('')
-          : '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Tidak ada item</td></tr>';
+          : '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Tidak ada item</td></tr>';
       }
 
       function renderStatusHistory(logs) {
@@ -1685,6 +1759,11 @@
       function handleApiError(err, targetEl) {
         if (String(err.message).includes('Unauthorized')) handleLogout();
         else showAlert('error', err.message || String(err), targetEl);
+      }
+      function productStatusBadge(status) {
+        return status === 'verified'
+          ? '<span class="badge bg-green-100 text-green-800">Verified</span>'
+          : '<span class="badge bg-amber-100 text-amber-800">Nama Produk belum terverifikasi</span>';
       }
       function statusBadge(status) {
         const map = {

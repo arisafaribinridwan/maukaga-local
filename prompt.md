@@ -211,3 +211,6 @@ Item boleh masuk proses cetak
    - submit final
    - dashboard status
    - queue cetak warranty/shipping label
+## Catatan prompt lokal sebelumnya
+
+tambahkan fitur "Cek Status" untuk memeriksa status berdasarkan ID yang diberikan. buatkan tombol "Cek Status" di atas samping "Lanjutkan Draft". tambahkan tombol "x" untuk close. dan buatkan defaultnya field id cari nya kosong, begitu juga ketika ditutup fieldnya kembali kosong.

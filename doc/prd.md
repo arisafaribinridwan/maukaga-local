@@ -121,6 +121,8 @@ Kebutuhan utama:
 | `config.js` | Konfigurasi frontend: `API_URL`, `APP_NAME`, `MAX_UPLOAD_MB`, `MAX_ITEMS`. |
 | `Code.gs` | Backend Google Apps Script API, data access, validasi, trigger email, Drive upload, dan session. |
 | `README.md` | Panduan setup teknis ringkas. |
+| `doc/prd.md` | Dokumen produk aktual dan acuan migrasi. |
+| `doc/tamplate cetak kartu garansi.xlsx` | Template referensi fisik cetak kartu garansi. Tidak dibaca runtime oleh aplikasi. |
 
 ### 5.2 Pola Komunikasi Frontend-Backend
 
@@ -199,17 +201,25 @@ Catatan migrasi: di Vue/Nuxt, nilai ini sebaiknya menjadi runtime config/environ
    - Alasan Pengajuan Kartu Garansi Baru
    - Minimal 1 item produk
 6. Setiap item berisi:
-   - Produk / Nama Produk
    - Model
+   - Produk / Nama Produk
    - Nomor Seri
-7. Jika model cocok dengan master `ModelProduk`, sistem otomatis mengisi dan mengunci field Produk untuk item tersebut.
-8. Pengguna klik `Simpan Draft & Cetak`.
-9. Frontend memvalidasi field wajib tanpa mewajibkan file upload.
-10. Frontend memanggil action `saveDraftPengajuan`.
-11. Backend membuat atau memperbarui row `Pengajuan` dengan status `Menunggu Upload`, membuat ID `KG-YYYYMMDD-0001`, membuat `Resume Token`, dan menyimpan item ke `PengajuanItems`.
-12. Sistem menyimpan referensi draft di `localStorage` browser.
-13. Sistem menampilkan form cetak ukuran A4 dan otomatis memanggil `window.print()`.
-14. Printout memuat ID pengajuan. Jika halaman tidak dibuka dari protocol `file:`, sistem juga menampilkan link lanjutkan draft yang berisi query `id` dan `token`.
+7. Urutan input item di UI adalah `Model` -> `Produk / Nama Produk` -> `Nomor Seri`, karena field Produk dapat otomatis terisi setelah Model dikenali.
+8. Jika model cocok dengan master `ModelProduk`, sistem otomatis mengisi dan mengunci field Produk untuk item tersebut.
+9. Jika model belum cocok dengan master, field Produk tetap terbuka agar pengguna dapat mengisi nama produk manual.
+10. Pengguna klik `Simpan Draft & Cetak`.
+11. Frontend memvalidasi field wajib tanpa mewajibkan file upload.
+12. Frontend memanggil action `saveDraftPengajuan`.
+13. Backend membuat atau memperbarui row `Pengajuan` dengan status `Menunggu Upload`, membuat ID `KG-YYYYMMDD-0001`, membuat `Resume Token`, dan menyimpan item ke `PengajuanItems`.
+14. Sistem menyimpan referensi draft di `localStorage` browser.
+15. Sistem menampilkan form cetak ukuran A4 dan otomatis memanggil `window.print()`.
+16. Printout memuat ID pengajuan. Jika halaman tidak dibuka dari protocol `file:`, sistem juga menampilkan link lanjutkan draft yang berisi query `id` dan `token`.
+17. Area tanda tangan printout terdiri dari:
+   - Teks `Tanggal Form : {tanggal form}` di kiri blok tanda tangan awal.
+   - Tabel awal 3 kolom: `Diajukan`, `Diketahui`, `Disetujui`, dengan footer `CS Head` dan `Branch Manager`.
+   - Teks `Disetujui dan diberikan :` di kiri blok tanda tangan akhir. Saat cabang mencetak form, tanggal ini harus kosong.
+   - Tabel akhir 2 kolom: `Diberikan`, `Disetujui`, dengan footer `Controller` dan `QRCC Div. Head`.
+18. Parameter internal `tanggalCetakKartu` pada `buildPrintHtml()` disiapkan untuk mengisi tanggal `Disetujui dan diberikan` dari tanggal cetak kartu. Alur cetak form cabang saat ini tidak mengirim parameter tersebut sehingga tetap kosong.
 
 ### 7.2 Melanjutkan Draft
 
@@ -764,9 +774,11 @@ Semua action dipanggil lewat `POST` ke `CONFIG.API_URL`.
 - Submit final hanya bisa dilakukan untuk draft valid dengan resume token valid.
 - Setelah submit final, resume token dikosongkan dan draft tidak bisa diedit lagi.
 - Setiap pengajuan wajib memiliki minimal 1 item.
+- Pada form publik, urutan input item harus mendukung alur master model-produk: `Model` diisi lebih dulu, kemudian `Produk / Nama Produk`, lalu `Nomor Seri`.
 - Jumlah item maksimal mengikuti `MAX_ITEMS` backend dan frontend.
 - Upload file signed wajib saat submit final.
 - Preview/cetak form tidak mewajibkan upload file.
+- Saat cabang mencetak form, tanggal `Disetujui dan diberikan` wajib kosong karena tanggal tersebut diisi dari tanggal cetak kartu pada tahap proses kartu.
 - File upload hanya boleh PDF, JPG/JPEG, atau PNG.
 - Backend memvalidasi extension dan MIME type file.
 - Ukuran file upload maksimum mengikuti `MAX_UPLOAD_MB`.
@@ -870,7 +882,7 @@ Catatan keamanan aktual:
 
 - UI responsif untuk desktop dan mobile.
 - Tabel menggunakan horizontal scroll untuk kolom banyak.
-- Form cetak pengajuan dioptimalkan untuk A4.
+- Form cetak pengajuan dioptimalkan untuk A4 dan memakai dua blok tanda tangan terpisah sesuai alur cabang dan controller.
 - Cetak kartu garansi menggunakan halaman A4 per item.
 - Label cabang menggunakan halaman A4 dengan 15 label per halaman.
 - Alert memberi feedback saat loading, sukses, dan gagal.
@@ -920,7 +932,9 @@ Catatan keamanan aktual:
 - Pengguna dapat menyimpan draft tanpa upload file.
 - Sistem menghasilkan ID pengajuan dan resume token untuk draft.
 - Draft tersimpan dengan status `Menunggu Upload`.
-- Sistem mencetak form A4 yang memuat ID, data pengajuan, item, catatan, dan tabel tanda tangan.
+- Sistem mencetak form A4 yang memuat ID, data pengajuan, item, catatan, `Tanggal Form`, dan tabel tanda tangan.
+- Form cetak cabang menampilkan blok tanda tangan `Diajukan/Diketahui/Disetujui` dan blok `Diberikan/Disetujui` secara terpisah.
+- Saat cabang mencetak form, teks `Disetujui dan diberikan :` tetap kosong.
 - Pengguna dapat melanjutkan draft dengan token valid.
 - Sistem menolak draft jika token salah atau status bukan `Menunggu Upload`.
 - Pengguna tidak dapat submit final tanpa file signed.
@@ -957,6 +971,7 @@ Catatan keamanan aktual:
 ### 20.5 Review Nama Produk
 
 - Model verified otomatis mengisi Produk di form publik.
+- Field item publik ditampilkan dengan urutan `Model`, `Produk / Nama Produk`, lalu `Nomor Seri`.
 - Model baru tersimpan sebagai `needs_review`.
 - Dashboard menampilkan queue review untuk model yang belum verified.
 - Admin dapat approve nama produk untuk model.

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mau KaGa — Launcher Portal</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #DDE4E8 0%, #F0F4F8 100%);
+      overflow-x: hidden;
+      min-height: 100vh;
+      width: 100vw;
+    }
+
+    /* Glassmorphism Styling based on design.md */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.04);
+      border-radius: 24px;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .glass-card:hover {
+      transform: translateY(-10px) scale(1.02);
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Micro-interactions for Icons */
+    .glass-card:hover .icon-container {
+      transform: scale(1.1) rotate(4deg);
+      background-color: #0F172A;
+      color: #FFFFFF;
+    }
+    
+    .glass-card:hover .action-btn {
+      background-color: #1E293B;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+
+    .icon-container {
+      transition: all 0.4s ease;
+      background-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .action-btn {
+      transition: all 0.3s ease;
+      background-color: #0F172A;
+      border-radius: 9999px;
+    }
+
+    /* Page Transition Animation */
+    .fade-out {
+      animation: fadeOutEffect 0.5s forwards cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .fade-in {
+      animation: fadeInEffect 0.5s forwards cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    @keyframes fadeOutEffect {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0.95); pointer-events: none; }
+    }
+
+    @keyframes fadeInEffect {
+      from { opacity: 0; transform: scale(1.05); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Dynamic background shapes animation */
+    .bg-shape {
+      position: absolute;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.65;
+    }
+  </style>
+</head>
+<body class="relative flex flex-col justify-between p-6 md:p-8 antialiased selection:bg-slate-200">
+
+  <!-- BACKGROUND ILLUSTRATION & GEOMETRIC SHAPES -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <!-- SVG Mesh Grid & Certificate Shield Illustration Line Art -->
+    <svg class="absolute w-full h-full text-slate-300/40" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <defs>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" />
+      
+      <!-- Abstract Guilloche/Security Lines -->
+      <path d="M-100,200 Q 300,50 700,400 T 1500,200 T 2100,600" fill="none" stroke="rgba(15, 23, 42, 0.04)" stroke-width="3"/>
+      <path d="M-100,250 Q 300,100 700,450 T 1500,250 T 2100,650" fill="none" stroke="rgba(15, 23, 42, 0.03)" stroke-width="2"/>
+      <path d="M-100,300 Q 300,150 700,500 T 1500,300 T 2100,700" fill="none" stroke="rgba(15, 23, 42, 0.02)" stroke-width="1.5"/>
+    </svg>
+
+    <!-- Floating Soft Glass Orbs -->
+    <div class="bg-shape top-[-10%] left-[-5%] w-[60vw] md:w-[45vw] h-[60vw] md:h-[45vw] rounded-full" style="background: radial-gradient(circle, rgba(14,165,233,0.12) 0%, rgba(255,255,255,0) 70%);"></div>
+    <div class="bg-shape bottom-[-15%] right-[-5%] w-[70vw] md:w-[50vw] h-[70vw] md:h-[50vw] rounded-full" style="background: radial-gradient(circle, rgba(15,23,42,0.06) 0%, rgba(255,255,255,0) 70%);"></div>
+    
+    <!-- Central Graphic Behind Cards -->
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.03] text-slate-900 hidden md:block">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-[600px] h-[600px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    </div>
+  </div>
+
+  <!-- HEADER BRANDING -->
+  <header class="relative z-10 flex flex-col md:flex-row items-center justify-between w-full max-w-7xl mx-auto gap-4 md:gap-0 mt-2">
+    <div class="flex items-center gap-3">
+      <!-- App Logo Box -->
+      <div class="h-10 w-10 rounded-xl bg-[#0F172A] flex items-center justify-center shadow-sm shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-[#0F172A] leading-tight">Mau KaGa</h1>
+        <p class="text-[10px] md:text-xs text-[#64748B] font-medium tracking-wide uppercase">Sistem Pengajuan Kartu Garansi</p>
+      </div>
+    </div>
+    
+    <div class="px-4 py-1.5 rounded-full bg-white/40 backdrop-blur-sm border border-white/60 text-xs font-semibold text-[#0F172A] shadow-sm">
+      Internal Portal QRCC & Cabang
+    </div>
+  </header>
+
+  <!-- LAUNCHER CENTRAL PORTAL -->
+  <main id="launcher-view" class="relative z-10 w-full max-w-6xl mx-auto my-auto flex flex-col items-center justify-center py-10 md:py-0">
+    
+    <!-- Title & Greeting Section -->
+    <div class="text-center mb-8 md:mb-12 max-w-2xl px-4">
+      <h2 class="text-3xl md:text-5xl font-bold tracking-tight text-[#0F172A] mb-3 md:mb-4">
+        Selamat Datang di Portal Kartu Garansi
+      </h2>
+      <p class="text-sm md:text-base text-[#64748B]">
+        Pilih salah satu menu di bawah ini untuk memulai pemrosesan data, pengecekan berkas, atau pemantauan status kartu pelanggan dengan cepat.
+      </p>
+    </div>
+
+    <!-- CARDS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full px-2 md:px-4">
+      
+      <!-- CARD 1: BUAT PERMINTAAN BARU -->
+      <div onclick="navigateTo('baru')" class="glass-card p-6 md:p-8 flex flex-col justify-between items-start cursor-pointer group">
+        <div>
+          <!-- Icon Context -->
+          <div class="icon-container h-12 w-12 md:h-14 md:w-14 rounded-2xl flex items-center justify-center text-[#0F172A] mb-6 md:mb-8 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-7 md:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 class="text-lg md:text-xl font-bold text-[#0F172A] mb-2 md:mb-3 tracking-tight">Buat Permintaan Baru</h3>
+          <p class="text-xs md:text-sm text-[#64748B] leading-relaxed mb-6">
+            Mulai pengisian formulir pengajuan kartu garansi baru untuk konsumen. Sistem akan menerbitkan ID Pengajuan & Resume Token secara otomatis.
+          </p>
+        </div>
+        <button class="action-btn text-white text-xs font-semibold px-5 py-2.5 flex items-center justify-center gap-2 shadow-sm w-full md:w-auto">
+          <span>Form Baru</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- CARD 2: CEK STATUS PENGAJUAN -->
+      <div onclick="navigateTo('cek')" class="glass-card p-6 md:p-8 flex flex-col justify-between items-start cursor-pointer group">
+        <div>
+          <div class="icon-container h-12 w-12 md:h-14 md:w-14 rounded-2xl flex items-center justify-center text-[#0F172A] mb-6 md:mb-8 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-7 md:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 class="text-lg md:text-xl font-bold text-[#0F172A] mb-2 md:mb-3 tracking-tight">Cek Status Pengajuan</h3>
+          <p class="text-xs md:text-sm text-[#64748B] leading-relaxed mb-6">
+            Pantau dan lacak posisi dokumen pengajuan secara langsung tanpa harus melakukan proses login. Cukup masukkan ID Pengajuan kartu Anda.
+          </p>
+        </div>
+        <button class="action-btn text-white text-xs font-semibold px-5 py-2.5 flex items-center justify-center gap-2 shadow-sm w-full md:w-auto">
+          <span>Lacak Status</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- CARD 3: LANJUTKAN DRAFT -->
+      <div onclick="navigateTo('draft')" class="glass-card p-6 md:p-8 flex flex-col justify-between items-start cursor-pointer group">
+        <div>
+          <div class="icon-container h-12 w-12 md:h-14 md:w-14 rounded-2xl flex items-center justify-center text-[#0F172A] mb-6 md:mb-8 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-7 md:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </div>
+          <h3 class="text-lg md:text-xl font-bold text-[#0F172A] mb-2 md:mb-3 tracking-tight">Lanjutkan Draft</h3>
+          <p class="text-xs md:text-sm text-[#64748B] leading-relaxed mb-6">
+            Lanjutkan pengisian draft tersimpan untuk mengunggah berkas fisik <i>hard copy</i> yang telah ditandatangani guna validasi final berkas.
+          </p>
+        </div>
+        <button class="action-btn text-white text-xs font-semibold px-5 py-2.5 flex items-center justify-center gap-2 shadow-sm w-full md:w-auto">
+          <span>Upload Berkas</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- WORKSPACE FRAME / SIMULATION VIEW -->
+  <!-- Ini adalah tempat area kerja (form) dimuat berdasarkan pilihan user. Disembunyikan secara default. -->
+  <div id="app-workspace-view" class="hidden fixed inset-0 z-20 w-full h-full bg-slate-100 flex-col overflow-y-auto">
+    <div class="max-w-5xl mx-auto w-full p-4 md:p-8 flex flex-col min-h-screen">
+      
+      <!-- Workspace Header -->
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-4">
+        <button onclick="returnToLauncher()" class="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors bg-white px-4 py-2 rounded-full border shadow-sm w-full md:w-auto justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Kembali ke Home</span>
+        </button>
+        <span id="current-action-badge" class="text-xs font-bold uppercase tracking-wider bg-slate-200 text-slate-800 px-3 py-1 rounded-full self-center md:self-auto"></span>
+      </div>
+      
+      <!-- TARGET CONTENT CONTAINER -->
+      <div id="dynamic-form-container" class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 flex-grow mb-8">
+        <!-- Content placeholder injected via JS -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="relative z-10 w-full max-w-7xl mx-auto text-center text-xs text-[#64748B] font-medium pb-2">
+    &copy; 2026 QRCC - Product Planning Division.
+  </footer>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- SCRIPTING FOR PORTAL ROUTING & ACTIONS -->
+  <script>
+    // Sistem Notifikasi Kustom pengganti alert()
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      // Styling dasar toast
+      let baseStyle = "pointer-events-auto px-5 py-3.5 rounded-2xl shadow-xl text-sm font-semibold transition-all duration-300 transform translate-y-10 opacity-0 border flex items-center gap-3";
+      
+      // Styling berdasarkan tipe pesan
+      if(type === 'success') {
+        toast.className = `${baseStyle} bg-slate-900 text-white border-slate-800`;
+        toast.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> <span>${message}</span>`;
+      } else if (type === 'info') {
+        toast.className = `${baseStyle} bg-white text-slate-800 border-slate-200`;
+        toast.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> <span>${message}</span>`;
+      }
+
+      container.appendChild(toast);
+
+      // Trigger animasi masuk
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-10', 'opacity-0');
+      });
+
+      // Hilangkan setelah 3.5 detik
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Fungsi Navigasi untuk mengganti tampilan tanpa mereload halaman
+    function navigateTo(actionType) {
+      const launcher = document.getElementById('launcher-view');
+      const workspace = document.getElementById('app-workspace-view');
+      const badge = document.getElementById('current-action-badge');
+      const container = document.getElementById('dynamic-form-container');
+
+      // Mulai efek fade-out pada launcher
+      launcher.classList.add('fade-out');
+
+      // Tunggu animasi selesai, lalu ganti tampilan
+      setTimeout(() => {
+        launcher.classList.add('hidden');
+        launcher.classList.remove('fade-out');
+        
+        workspace.classList.remove('hidden');
+        workspace.classList.add('flex');
+        workspace.classList.add('fade-in');
+        
+        // Memuat HTML simulasi sesuai aksi yang dipilih user (Berdasarkan referensi index.html)
+        if (actionType === 'baru') {
+          badge.textContent = 'Permintaan Baru';
+          container.innerHTML = `
+            <div class="max-w-2xl mx-auto">
+              <h2 class="text-xl md:text-2xl font-bold mb-2 text-slate-900">Form Pengajuan Kartu Garansi</h2>
+              <p class="text-sm text-slate-500 mb-6">Lengkapi data di bawah ini untuk membuat draft permintaan baru.</p>
+              
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Nama Konsumen <span class="text-red-500">*</span></label>
+                  <input type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all" placeholder="Masukkan nama lengkap konsumen">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Bagian/Cabang <span class="text-red-500">*</span></label>
+                  <input type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all" placeholder="Contoh: Cabang Jakarta Pusat">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Model Produk <span class="text-red-500">*</span></label>
+                    <input type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all" placeholder="Tipe / Model">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nomor Seri <span class="text-red-500">*</span></label>
+                    <input type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all" placeholder="S/N Produk">
+                  </div>
+                </div>
+                <div class="pt-6 flex justify-end">
+                  <button class="bg-slate-900 text-white font-medium px-6 py-3 rounded-xl hover:bg-slate-800 transition-colors shadow-sm text-sm w-full md:w-auto" onclick="showToast('Draft berhasil dibuat! ID Pengajuan: KG-20260528-0001', 'success')">
+                    Simpan Draft & Cetak Form
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (actionType === 'cek') {
+          badge.textContent = 'Cek Status';
+          container.innerHTML = `
+            <div class="max-w-md mx-auto text-center py-6">
+              <h2 class="text-xl md:text-2xl font-bold mb-2 text-slate-900">Lacak Status Pengajuan</h2>
+              <p class="text-sm text-slate-500 mb-6">Masukkan ID Pengajuan Anda untuk melihat progres dokumen terbaru.</p>
+              
+              <div class="space-y-4">
+                <div class="flex flex-col md:flex-row gap-2">
+                  <input type="text" class="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 outline-none font-mono uppercase transition-all" placeholder="KG-YYYYMMDD-XXXX">
+                  <button class="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors w-full md:w-auto" onclick="document.getElementById('status-result').classList.remove('hidden'); showToast('Mencari data pengajuan...', 'info')">
+                    Cari
+                  </button>
+                </div>
+                
+                <!-- Hasil Pencarian -->
+                <div id="status-result" class="hidden mt-8 p-6 border rounded-2xl bg-slate-50 text-center animate-fade-in">
+                  <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-4">Hasil Pencarian</span>
+                  <h3 class="font-mono text-2xl font-black text-slate-800 mb-6">KG-20260528-0012</h3>
+                  
+                  <div class="inline-flex items-center justify-center gap-3 rounded-full border border-amber-200 bg-amber-100 px-6 py-2 shadow-sm mb-4">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60"></span>
+                      <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-600"></span>
+                    </span>
+                    <span class="text-sm font-bold tracking-wide text-amber-800">Menunggu Upload</span>
+                  </div>
+                  
+                  <p class="text-sm font-medium text-slate-600 mt-2">
+                    Pengajuan masih berupa draft. Lanjutkan draft untuk upload hard copy bertanda tangan dan submit final.
+                  </p>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (actionType === 'draft') {
+          badge.textContent = 'Lanjutkan Draft';
+          container.innerHTML = `
+            <div class="max-w-xl mx-auto">
+              <h2 class="text-xl md:text-2xl font-bold mb-2 text-slate-900">Upload Hard Copy Berkas</h2>
+              <p class="text-sm text-slate-500 mb-6">Lanjutkan draft pengajuan untuk melampirkan file dokumen fisik (PDF/JPG).</p>
+              
+              <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ID Pengajuan</label>
+                    <input type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-mono uppercase focus:outline-none focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 transition-all" placeholder="KG-YYYYMMDD-XXXX">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Resume Token</label>
+                    <input type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-mono focus:outline-none focus:ring-4 focus:ring-slate-900/10 focus:border-slate-900 transition-all" placeholder="TKN-XXXX">
+                  </div>
+                </div>
+                
+                <div>
+                   <label class="block text-sm font-medium text-slate-700 mb-2">Upload File Hard Copy Bertanda Tangan</label>
+                   <div class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onclick="showToast('Dialog pemilihan file (PDF/JPG) dibuka secara simulasi.', 'info')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-700">Klik untuk memilih file hasil pindai</p>
+                    <p class="text-xs text-slate-400 mt-1">Pastikan formulir fisik telah ditandatangani. (Maks 10MB)</p>
+                  </div>
+                </div>
+                
+                <div class="pt-2 flex justify-end">
+                  <button class="bg-blue-600 text-white font-medium px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors shadow-sm text-sm w-full md:w-auto" onclick="showToast('Berkas berhasil disubmit final! Pengajuan masuk antrean review.', 'success')">
+                    Submit Final Pengajuan
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }, 500); // Sinkron dengan durasi CSS animasi fade-out
+    }
+
+    // Fungsi untuk kembali ke Launcher
+    function returnToLauncher() {
+      const launcher = document.getElementById('launcher-view');
+      const workspace = document.getElementById('app-workspace-view');
+
+      workspace.classList.remove('fade-in');
+      workspace.classList.add('fade-out');
+
+      setTimeout(() => {
+        workspace.classList.add('hidden');
+        workspace.classList.remove('flex', 'fade-out');
+        
+        launcher.classList.remove('hidden');
+        launcher.classList.add('fade-in');
+      }, 500);
+    }
+  </script>
+</body>
+</html>

@@ -570,6 +570,7 @@
         fillFormFromDraft(result.data);
         setDraftReference(idPengajuan, resumeToken);
         setFinalSubmissionMode(true);
+        showFinalUploadPanel();
         if (reference.fromUrl) clearResumeParamsFromUrl();
         showAlert('success', `Draft ${escapeHtml(idPengajuan)} berhasil dimuat. Upload file signed lalu klik Submit Final.`);
       } catch (error) {
@@ -736,6 +737,18 @@
       submitButton.classList.toggle('hidden', !isEnabled);
       submitButton.classList.toggle('inline-flex', isEnabled);
       saveDraftButton.classList.toggle('hidden', isEnabled);
+    }
+
+    function showFinalUploadPanel() {
+      const draftSection = document.getElementById('section-draft-resume');
+      const draftButton = document.getElementById('btn-toggle-draft');
+      draftSection.classList.add('hidden');
+      draftButton.setAttribute('aria-expanded', 'false');
+      draftButton.querySelector('span').textContent = 'Lanjutkan Draft';
+      updatePengajuanFormVisibility();
+      requestAnimationFrame(() => {
+        document.getElementById('section-upload-final').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
 
     function initializeDraftResume() {
